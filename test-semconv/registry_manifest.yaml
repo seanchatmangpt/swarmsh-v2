@@ -1,0 +1,11 @@
+semconv_version: 1.26.0
+schema_base_url: https://swarmsh.dev/schemas
+name: SwarmSH v2 Test Semantic Conventions
+version: 1.0.0
+description: Test semantic conventions for SwarmSH v2
+groups:
+  - id: swarmsh
+    brief: SwarmSH v2 test semantic conventions
+    type: span
+    paths:
+      - test-agent.yaml

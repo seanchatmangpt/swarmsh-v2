@@ -1,0 +1,250 @@
+{#- Shell Export Template for Real-time Coordination -#}
+{#- Generates high-frequency coordination shell scripts -#}
+#!/bin/bash
+# Real-time Coordination Shell Implementation
+# Generated from semantic conventions by OTEL Weaver
+# Maintains nanosecond precision for high-frequency operations
+
+set -euo pipefail
+
+# Constants from semantic conventions
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.realtime") %}
+{% if group.attributes %}
+{% for attr in group.attributes %}
+readonly {{ attr.id.split(".")[-1] | screaming_snake_case }}="{{ attr.id }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+# Configuration parameters
+readonly SYNC_INTERVAL_US={{ params.realtime_sync_interval_us | default(100) }}
+readonly BUFFER_SIZE={{ params.realtime_buffer_size | default(10000) }}
+readonly MAX_LATENCY_NS={{ params.realtime_max_latency_ns | default(1000000) }}
+readonly TARGET_THROUGHPUT={{ params.realtime_target_throughput | default(100000) }}
+
+# Base directory
+readonly REALTIME_BASE_DIR="${SWARMSH_WORK_DIR:-/tmp/swarmsh}/realtime"
+mkdir -p "$REALTIME_BASE_DIR"/{events,metrics,sync}
+
+# High-precision timing
+get_nano_timestamp() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        python3 -c "import time; print(int(time.time() * 1e9))"
+    else
+        date +%s%N
+    fi
+}
+
+# Event buffer (using named pipe for speed)
+REALTIME_EVENT_PIPE="$REALTIME_BASE_DIR/event_pipe"
+[[ ! -p "$REALTIME_EVENT_PIPE" ]] && mkfifo "$REALTIME_EVENT_PIPE"
+
+# Sequence counter file
+SEQUENCE_FILE="$REALTIME_BASE_DIR/sequence_counter"
+[[ ! -f "$SEQUENCE_FILE" ]] && echo "0" > "$SEQUENCE_FILE"
+
+# Get next sequence number atomically
+get_sequence_number() {
+    local lock_file="$SEQUENCE_FILE.lock"
+    local seq_num
+    
+    (
+        flock -x 200
+        seq_num=$(cat "$SEQUENCE_FILE")
+        echo $((seq_num + 1)) > "$SEQUENCE_FILE"
+        echo "$seq_num"
+    ) 200>"$lock_file"
+}
+
+# Submit real-time event
+submit_event() {
+    local event_type="$1"
+    local event_data="${2:-}"
+    
+    local submit_time=$(get_nano_timestamp)
+    local sequence=$(get_sequence_number)
+    
+    # Create event record
+    local event_json=$(cat <<EOF
+{
+    "sequence": $sequence,
+    "timestamp": $submit_time,
+    "event_type": "$event_type",
+    "data": "$event_data"
+}
+EOF
+    )
+    
+    # Write to pipe (non-blocking)
+    echo "$event_json" > "$REALTIME_EVENT_PIPE" &
+    
+    # Calculate latency
+    local end_time=$(get_nano_timestamp)
+    local latency=$((end_time - submit_time))
+    
+    # Check against max latency
+    if [[ $latency -gt $MAX_LATENCY_NS ]]; then
+        echo "WARNING: Event submission exceeded latency target: ${latency}ns" >&2
+    fi
+    
+    # Return receipt
+    echo "{\"sequence\": $sequence, \"timestamp\": $submit_time, \"latency_ns\": $latency}"
+}
+
+# Event processor (runs in background)
+start_event_processor() {
+    local processor_id="proc_$(get_nano_timestamp)"
+    local batch_file="$REALTIME_BASE_DIR/events/batch_$processor_id.jsonl"
+    
+    (
+        while true; do
+            local batch_start=$(get_nano_timestamp)
+            local event_count=0
+            
+            # Read events from pipe with timeout
+            while IFS= read -r -t 0.1 event_json; do
+                echo "$event_json" >> "$batch_file"
+                ((event_count++))
+                
+                # Process batch if buffer full
+                if [[ $event_count -ge $BUFFER_SIZE ]]; then
+                    process_event_batch "$batch_file" "$event_count" "$batch_start"
+                    batch_file="$REALTIME_BASE_DIR/events/batch_$(get_nano_timestamp).jsonl"
+                    event_count=0
+                fi
+            done < "$REALTIME_EVENT_PIPE"
+            
+            # Process remaining events
+            if [[ $event_count -gt 0 ]]; then
+                process_event_batch "$batch_file" "$event_count" "$batch_start"
+            fi
+            
+            # Micro-sleep for sync interval
+            sleep 0.0001  # 100us
+        done
+    ) &
+    
+    echo "$!"  # Return processor PID
+}
+
+# Process event batch
+process_event_batch() {
+    local batch_file="$1"
+    local event_count="$2"
+    local batch_start="$3"
+    
+    local process_end=$(get_nano_timestamp)
+    local batch_latency=$((process_end - batch_start))
+    
+    # Calculate throughput
+    local throughput=0
+    if [[ $batch_latency -gt 0 ]]; then
+        throughput=$((event_count * 1000000000 / batch_latency))
+    fi
+    
+    # Record metrics
+    cat >> "$REALTIME_BASE_DIR/metrics/batch_metrics.jsonl" <<EOF
+{
+    "timestamp": $process_end,
+    "event_count": $event_count,
+    "batch_latency_ns": $batch_latency,
+    "throughput_eps": $throughput
+}
+EOF
+    
+    # Archive processed batch
+    mv "$batch_file" "$batch_file.processed"
+}
+
+# Synchronize with peers
+sync_coordinators() {
+    local coordinator_id="$1"
+    shift
+    local peers=("$@")
+    
+    local sync_timestamp=$(get_nano_timestamp)
+    local sync_file="$REALTIME_BASE_DIR/sync/sync_$sync_timestamp.json"
+    
+    # Exchange timestamps (simplified - would use actual network)
+    local max_drift=0
+    for peer in "${peers[@]}"; do
+        local peer_time=$(get_nano_timestamp)
+        local drift=$((peer_time - sync_timestamp))
+        [[ ${drift#-} -gt $max_drift ]] && max_drift=${drift#-}
+    done
+    
+    cat > "$sync_file" <<EOF
+{
+    "coordinator_id": "$coordinator_id",
+    "sync_timestamp": $sync_timestamp,
+    "peer_count": ${#peers[@]},
+    "max_clock_drift_ns": $max_drift
+}
+EOF
+    
+    echo "Synchronized with ${#peers[@]} peers, max drift: ${max_drift}ns"
+}
+
+# Performance monitoring
+monitor_performance() {
+    local metrics_file="$REALTIME_BASE_DIR/metrics/batch_metrics.jsonl"
+    
+    if [[ ! -f "$metrics_file" ]]; then
+        echo "No metrics available"
+        return
+    fi
+    
+    # Calculate averages from last 100 batches
+    local avg_latency=$(tail -100 "$metrics_file" | jq -s 'map(.batch_latency_ns) | add / length')
+    local avg_throughput=$(tail -100 "$metrics_file" | jq -s 'map(.throughput_eps) | add / length')
+    local total_events=$(tail -100 "$metrics_file" | jq -s 'map(.event_count) | add')
+    
+    cat <<EOF
+Real-time Coordination Performance:
+  Average Latency: $(awk "BEGIN {printf \"%.2f\", $avg_latency / 1000000}")ms
+  Average Throughput: $(awk "BEGIN {printf \"%.0f\", $avg_throughput}") events/sec
+  Total Events (last 100 batches): $total_events
+  Target Throughput: $TARGET_THROUGHPUT events/sec
+  Max Latency Target: $(awk "BEGIN {printf \"%.2f\", $MAX_LATENCY_NS / 1000000}")ms
+EOF
+}
+
+# Main coordination function
+coordinate_realtime() {
+    local command="${1:-help}"
+    shift || true
+    
+    case "$command" in
+        start-processor)
+            start_event_processor
+            ;;
+        submit-event)
+            submit_event "$@"
+            ;;
+        sync)
+            sync_coordinators "$@"
+            ;;
+        monitor)
+            monitor_performance
+            ;;
+        help|*)
+            cat <<EOF
+Real-time Coordination Commands:
+  start-processor         Start event processor (returns PID)
+  submit-event <type> [data]  Submit high-frequency event
+  sync <id> <peer>...     Synchronize with peer coordinators
+  monitor                 Show performance metrics
+EOF
+            ;;
+    esac
+}
+
+# Export functions
+export -f get_nano_timestamp
+export -f submit_event
+export -f coordinate_realtime
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    coordinate_realtime "$@"
+fi

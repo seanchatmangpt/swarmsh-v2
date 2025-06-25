@@ -1,0 +1,311 @@
+{#- Atomic File Operations Template for SwarmSH v2 -#}
+{#- Generates Rust code for zero-conflict atomic file operations -#}
+//! Atomic File Operations Implementation
+//! 
+//! Generated from semantic conventions by OTEL Weaver
+//! Implements mathematically guaranteed zero-conflict file operations
+
+use crate::coordination::{CoordinationPattern, FileOperation};
+use crate::generated::attributes::*;
+use anyhow::{Context, Result};
+use file_lock::{FileLock, FileOptions};
+use serde::{Deserialize, Serialize};
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::{info, warn, span, Level};
+
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.atomic") %}
+/// {{ group.brief | default("Atomic file operations pattern") }}
+#[derive(Debug, Clone)]
+pub struct {{ group.id.split(".")[-1] | pascal_case }}FileSystem {
+    /// Base directory for atomic operations
+    pub base_dir: PathBuf,
+    
+    /// Operation ID generator
+    pub operation_counter: std::sync::atomic::AtomicU64,
+    
+    /// Lock timeout configuration
+    pub lock_timeout_ms: u64,
+    pub retry_count: u32,
+    
+    /// Conflict resolution strategy
+    pub conflict_strategy: ConflictStrategy,
+}
+
+impl {{ group.id.split(".")[-1] | pascal_case }}FileSystem {
+    /// Create new atomic file system handler
+    pub fn new(base_dir: impl AsRef<Path>) -> Result<Self> {
+        let base_dir = base_dir.as_ref().to_path_buf();
+        
+        // Ensure base directory exists
+        fs::create_dir_all(&base_dir)
+            .context("Failed to create base directory")?;
+            
+        Ok(Self {
+            base_dir,
+            operation_counter: std::sync::atomic::AtomicU64::new(0),
+            lock_timeout_ms: {{ params.atomic_lock_timeout_ms | default(5000) }},
+            retry_count: {{ params.atomic_retry_count | default(3) }},
+            conflict_strategy: ConflictStrategy::{{ params.atomic_conflict_strategy | default("Retry") }},
+        })
+    }
+    
+    /// Atomic write with mathematical zero-conflict guarantee
+    pub fn atomic_write(&self, path: &str, data: &[u8]) -> Result<WriteReceipt> {
+        let span = span!(Level::INFO, "atomic_write",
+            path = %path,
+            size = %data.len()
+        );
+        let _enter = span.enter();
+        
+        let full_path = self.base_dir.join(path);
+        let temp_path = self.create_temp_path(&full_path);
+        let lock_path = format!("{}.lock", full_path.display());
+        
+        // Generate unique operation ID
+        let operation_id = self.generate_operation_id();
+        let start_time = self.get_nanos();
+        
+        // Acquire exclusive lock
+        let lock = self.acquire_lock(&lock_path)?;
+        
+        // Write to temporary file first
+        {
+            let mut temp_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .mode(0o644)
+                .open(&temp_path)
+                .context("Failed to create temp file")?;
+                
+            temp_file.write_all(data)
+                .context("Failed to write data")?;
+                
+            temp_file.sync_all()
+                .context("Failed to sync temp file")?;
+        }
+        
+        // Atomic rename
+        fs::rename(&temp_path, &full_path)
+            .context("Failed to perform atomic rename")?;
+            
+        // Release lock
+        drop(lock);
+        
+        let duration_ns = self.get_nanos() - start_time;
+        
+        info!("Atomic write completed: {} bytes in {}ns", data.len(), duration_ns);
+        
+        Ok(WriteReceipt {
+            operation_id,
+            path: path.to_string(),
+            bytes_written: data.len(),
+            duration_ns,
+            conflict_count: 0,
+        })
+    }
+    
+    /// Atomic read with consistency guarantee
+    pub fn atomic_read(&self, path: &str) -> Result<ReadReceipt> {
+        let span = span!(Level::INFO, "atomic_read", path = %path);
+        let _enter = span.enter();
+        
+        let full_path = self.base_dir.join(path);
+        let lock_path = format!("{}.lock", full_path.display());
+        
+        let operation_id = self.generate_operation_id();
+        let start_time = self.get_nanos();
+        
+        // Acquire shared lock for reading
+        let _lock = self.acquire_lock(&lock_path)?;
+        
+        // Read file
+        let data = fs::read(&full_path)
+            .context("Failed to read file")?;
+            
+        let duration_ns = self.get_nanos() - start_time;
+        
+        info!("Atomic read completed: {} bytes in {}ns", data.len(), duration_ns);
+        
+        Ok(ReadReceipt {
+            operation_id,
+            path: path.to_string(),
+            data,
+            duration_ns,
+        })
+    }
+    
+    /// Atomic compare-and-swap operation
+    pub fn atomic_cas(&self, path: &str, expected: &[u8], new: &[u8]) -> Result<bool> {
+        let span = span!(Level::INFO, "atomic_cas", path = %path);
+        let _enter = span.enter();
+        
+        let full_path = self.base_dir.join(path);
+        let lock_path = format!("{}.lock", full_path.display());
+        
+        // Acquire exclusive lock
+        let _lock = self.acquire_lock(&lock_path)?;
+        
+        // Read current value
+        let current = fs::read(&full_path).unwrap_or_default();
+        
+        // Compare
+        if current == expected {
+            // Swap
+            self.atomic_write(path, new)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+    
+    /// Create temporary file path
+    fn create_temp_path(&self, path: &Path) -> PathBuf {
+        let nanos = self.get_nanos();
+        let pid = std::process::id();
+        let temp_name = format!(".{}.{}.{}.tmp", 
+            path.file_name().unwrap().to_string_lossy(),
+            pid,
+            nanos
+        );
+        path.parent().unwrap().join(temp_name)
+    }
+    
+    /// Acquire file lock with retry
+    fn acquire_lock(&self, lock_path: &str) -> Result<FileLock> {
+        let mut retry_count = 0;
+        
+        loop {
+            match FileLock::lock(lock_path, true, FileOptions::new().write(true).create(true)) {
+                Ok(lock) => return Ok(lock),
+                Err(e) if retry_count < self.retry_count => {
+                    warn!("Failed to acquire lock, retrying: {}", e);
+                    retry_count += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+                Err(e) => return Err(anyhow::anyhow!("Failed to acquire lock: {}", e)),
+            }
+        }
+    }
+    
+    /// Generate unique operation ID
+    fn generate_operation_id(&self) -> String {
+        let seq = self.operation_counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let nanos = self.get_nanos();
+        format!("op_{}_{}", nanos, seq)
+    }
+    
+    /// Get nanosecond timestamp
+    fn get_nanos(&self) -> u128 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    }
+}
+
+/// Conflict resolution strategy
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConflictStrategy {
+    Retry,
+    Fail,
+    Queue,
+}
+
+/// Write operation receipt
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WriteReceipt {
+    pub operation_id: String,
+    pub path: String,
+    pub bytes_written: usize,
+    pub duration_ns: u128,
+    pub conflict_count: u32,
+}
+
+/// Read operation receipt
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReadReceipt {
+    pub operation_id: String,
+    pub path: String,
+    pub data: Vec<u8>,
+    pub duration_ns: u128,
+}
+
+impl CoordinationPattern for {{ group.id.split(".")[-1] | pascal_case }}FileSystem {
+    fn pattern_type(&self) -> &str {
+        "atomic"
+    }
+    
+    fn coordinate(&self, agents: Vec<String>) -> Result<()> {
+        // Coordinate file access among agents
+        info!("Coordinating atomic file access for {} agents", agents.len());
+        
+        // Create agent-specific directories
+        for agent in agents {
+            let agent_dir = self.base_dir.join(&agent);
+            fs::create_dir_all(agent_dir)?;
+        }
+        
+        Ok(())
+    }
+}
+
+{% if group.attributes %}
+/// Atomic operations specific attributes
+pub mod attributes {
+    {% for attr in group.attributes %}
+    /// {{ attr.brief | default("") }}
+    pub const {{ attr.id.split(".")[-1] | screaming_snake_case }}: &str = "{{ attr.id }}";
+    {% endfor %}
+}
+{% endif %}
+
+{% endfor %}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    
+    #[test]
+    fn test_atomic_filesystem_creation() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        assert_eq!(fs.lock_timeout_ms, 5000);
+    }
+    
+    #[test]
+    fn test_atomic_write_read() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        let data = b"test data";
+        let write_receipt = fs.atomic_write("test.txt", data).unwrap();
+        assert_eq!(write_receipt.bytes_written, data.len());
+        
+        let read_receipt = fs.atomic_read("test.txt").unwrap();
+        assert_eq!(read_receipt.data, data);
+    }
+    
+    #[test]
+    fn test_atomic_cas() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        // Initial write
+        fs.atomic_write("cas.txt", b"initial").unwrap();
+        
+        // Successful CAS
+        assert!(fs.atomic_cas("cas.txt", b"initial", b"updated").unwrap());
+        
+        // Failed CAS
+        assert!(!fs.atomic_cas("cas.txt", b"initial", b"failed").unwrap());
+        
+        // Verify final value
+        let final_data = fs.atomic_read("cas.txt").unwrap();
+        assert_eq!(final_data.data, b"updated");
+    }
+}

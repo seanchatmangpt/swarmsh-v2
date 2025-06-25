@@ -1,0 +1,356 @@
+{#- Shell Export Template for Roberts Rules Governance -#}
+{#- Generates portable shell scripts for Roberts Rules implementation -#}
+#!/bin/bash
+# Roberts Rules of Order Shell Implementation
+# Generated from semantic conventions by OTEL Weaver
+# Implements parliamentary procedures for agent governance
+
+set -euo pipefail
+
+# Constants from semantic conventions
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.roberts") %}
+{% if group.attributes %}
+{% for attr in group.attributes %}
+readonly {{ attr.id.split(".")[-1] | screaming_snake_case }}="{{ attr.id }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+# Configuration parameters
+readonly QUORUM_PERCENTAGE={{ params.roberts_quorum_percentage | default(0.51) }}
+readonly MINIMUM_MEMBERS={{ params.roberts_minimum_members | default(3) }}
+readonly VOTING_DURATION_SECONDS={{ params.roberts_voting_duration | default(300) }}
+readonly REQUIRE_SECONDING={{ params.roberts_require_seconding | default("true") }}
+readonly ALLOW_AMENDMENTS={{ params.roberts_allow_amendments | default("true") }}
+readonly DEBATE_TIME_LIMIT={{ params.roberts_debate_limit | default(600) }}
+
+# Base directory for governance
+readonly ROBERTS_BASE_DIR="${SWARMSH_WORK_DIR:-/tmp/swarmsh}/roberts"
+mkdir -p "$ROBERTS_BASE_DIR"
+
+# Get nanosecond timestamp
+get_nano_timestamp() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        python3 -c "import time; print(int(time.time() * 1e9))"
+    else
+        date +%s%N
+    fi
+}
+
+# Generate unique ID
+generate_roberts_id() {
+    local prefix="${1:-roberts}"
+    echo "${prefix}_$(get_nano_timestamp)_$$"
+}
+
+# Call meeting to order
+call_to_order() {
+    local chair="$1"
+    local members_file="$2"
+    
+    # Count members
+    local member_count=$(wc -l < "$members_file")
+    
+    # Check quorum
+    local required_quorum=$(awk "BEGIN {printf \"%.0f\", $member_count * $QUORUM_PERCENTAGE}")
+    if [[ $member_count -lt $MINIMUM_MEMBERS ]] || [[ $member_count -lt $required_quorum ]]; then
+        echo "ERROR: Quorum not met (need $required_quorum, have $member_count)" >&2
+        return 1
+    fi
+    
+    # Create meeting
+    local meeting_id=$(generate_roberts_id "meeting")
+    local meeting_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id"
+    mkdir -p "$meeting_dir"/{motions,votes,minutes}
+    
+    # Initialize meeting record
+    cat > "$meeting_dir/metadata.json" <<EOF
+{
+    "meeting_id": "$meeting_id",
+    "chair": "$chair",
+    "secretary": null,
+    "start_time": $(get_nano_timestamp),
+    "member_count": $member_count,
+    "status": "in_session"
+}
+EOF
+    
+    # Copy member list
+    cp "$members_file" "$meeting_dir/members.txt"
+    
+    echo "$meeting_id"
+}
+
+# Submit motion (atomic operation)
+submit_motion() {
+    local meeting_id="$1"
+    local motion_type="$2"
+    local proposer="$3"
+    local description="$4"
+    
+    local meeting_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id"
+    local motion_id=$(generate_roberts_id "motion")
+    local motion_file="$meeting_dir/motions/$motion_id.json"
+    local queue_file="$meeting_dir/motion_queue.txt"
+    local lock_file="$queue_file.lock"
+    
+    # Validate motion type
+    case "$motion_type" in
+        main|subsidiary|privileged|incidental)
+            ;;
+        *)
+            echo "ERROR: Invalid motion type: $motion_type" >&2
+            return 1
+            ;;
+    esac
+    
+    # Create motion record
+    cat > "$motion_file" <<EOF
+{
+    "motion_id": "$motion_id",
+    "motion_type": "$motion_type",
+    "description": "$description",
+    "proposer": "$proposer",
+    "seconder": null,
+    "submitted_at": $(get_nano_timestamp),
+    "status": "pending"
+}
+EOF
+    
+    # Add to queue atomically
+    (
+        flock -x 200
+        echo "$motion_id" >> "$queue_file"
+        
+        # If no active motion, make this one active
+        if [[ ! -f "$meeting_dir/active_motion.txt" ]]; then
+            echo "$motion_id" > "$meeting_dir/active_motion.txt"
+            sed -i.bak 's/"status": "pending"/"status": "active"/' "$motion_file"
+        fi
+    ) 200>"$lock_file"
+    
+    echo "$motion_id"
+}
+
+# Second a motion
+second_motion() {
+    local meeting_id="$1"
+    local motion_id="$2"
+    local seconder="$3"
+    
+    local meeting_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id"
+    local motion_file="$meeting_dir/motions/$motion_id.json"
+    local lock_file="$motion_file.lock"
+    
+    if [[ ! -f "$motion_file" ]]; then
+        echo "ERROR: Motion $motion_id not found" >&2
+        return 1
+    fi
+    
+    # Check if motion is active
+    local active_motion=$(cat "$meeting_dir/active_motion.txt" 2>/dev/null || echo "")
+    if [[ "$active_motion" != "$motion_id" ]]; then
+        echo "ERROR: Motion $motion_id is not active" >&2
+        return 1
+    fi
+    
+    # Check proposer != seconder
+    local proposer=$(jq -r .proposer "$motion_file")
+    if [[ "$proposer" == "$seconder" ]]; then
+        echo "ERROR: Proposer cannot second their own motion" >&2
+        return 1
+    fi
+    
+    # Update motion atomically
+    (
+        flock -x 200
+        local temp_file=$(mktemp)
+        jq --arg seconder "$seconder" '.seconder = $seconder' "$motion_file" > "$temp_file"
+        mv "$temp_file" "$motion_file"
+    ) 200>"$lock_file"
+    
+    echo "Motion $motion_id seconded by $seconder"
+}
+
+# Call for vote
+call_vote() {
+    local meeting_id="$1"
+    
+    local meeting_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id"
+    local active_motion=$(cat "$meeting_dir/active_motion.txt" 2>/dev/null || echo "")
+    
+    if [[ -z "$active_motion" ]]; then
+        echo "ERROR: No active motion to vote on" >&2
+        return 1
+    fi
+    
+    local motion_file="$meeting_dir/motions/$active_motion.json"
+    
+    # Check if seconding required
+    if [[ "$REQUIRE_SECONDING" == "true" ]]; then
+        local seconder=$(jq -r .seconder "$motion_file")
+        if [[ "$seconder" == "null" ]]; then
+            echo "ERROR: Motion requires seconding before vote" >&2
+            return 1
+        fi
+    fi
+    
+    # Create voting session
+    local vote_id=$(generate_roberts_id "vote")
+    local vote_dir="$meeting_dir/votes/$vote_id"
+    mkdir -p "$vote_dir"
+    
+    cat > "$vote_dir/session.json" <<EOF
+{
+    "vote_id": "$vote_id",
+    "motion_id": "$active_motion",
+    "start_time": $(get_nano_timestamp),
+    "end_time": $(($(get_nano_timestamp) + VOTING_DURATION_SECONDS * 1000000000)),
+    "status": "open"
+}
+EOF
+    
+    echo "$vote_id"
+}
+
+# Cast vote
+cast_vote() {
+    local meeting_id="$1"
+    local vote_id="$2"
+    local member="$3"
+    local vote="$4"  # aye, nay, abstain
+    
+    local vote_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id/votes/$vote_id"
+    local vote_file="$vote_dir/ballots.jsonl"
+    local lock_file="$vote_file.lock"
+    
+    # Validate vote
+    case "$vote" in
+        aye|nay|abstain)
+            ;;
+        *)
+            echo "ERROR: Invalid vote: $vote" >&2
+            return 1
+            ;;
+    esac
+    
+    # Check if voting is still open
+    local end_time=$(jq -r .end_time "$vote_dir/session.json")
+    local current_time=$(get_nano_timestamp)
+    if [[ $current_time -gt $end_time ]]; then
+        echo "ERROR: Voting has closed" >&2
+        return 1
+    fi
+    
+    # Record vote atomically
+    (
+        flock -x 200
+        
+        # Check for duplicate vote
+        if grep -q "\"member\": \"$member\"" "$vote_file" 2>/dev/null; then
+            echo "ERROR: Member has already voted" >&2
+            return 1
+        fi
+        
+        cat >> "$vote_file" <<EOF
+{"member": "$member", "vote": "$vote", "timestamp": $current_time}
+EOF
+    ) 200>"$lock_file"
+    
+    echo "Vote recorded"
+}
+
+# Tally votes
+tally_votes() {
+    local meeting_id="$1"
+    local vote_id="$2"
+    
+    local vote_dir="$ROBERTS_BASE_DIR/meetings/$meeting_id/votes/$vote_id"
+    local vote_file="$vote_dir/ballots.jsonl"
+    local results_file="$vote_dir/results.json"
+    
+    # Count votes
+    local aye_count=$(grep -c '"vote": "aye"' "$vote_file" 2>/dev/null || echo 0)
+    local nay_count=$(grep -c '"vote": "nay"' "$vote_file" 2>/dev/null || echo 0)
+    local abstain_count=$(grep -c '"vote": "abstain"' "$vote_file" 2>/dev/null || echo 0)
+    local total_votes=$((aye_count + nay_count + abstain_count))
+    
+    # Determine outcome (simple majority)
+    local passed="false"
+    if [[ $aye_count -gt $nay_count ]]; then
+        passed="true"
+    fi
+    
+    # Record results
+    cat > "$results_file" <<EOF
+{
+    "vote_id": "$vote_id",
+    "tally_time": $(get_nano_timestamp),
+    "aye": $aye_count,
+    "nay": $nay_count,
+    "abstain": $abstain_count,
+    "total": $total_votes,
+    "passed": $passed
+}
+EOF
+    
+    # Update motion status
+    local motion_id=$(jq -r .motion_id "$vote_dir/session.json")
+    local motion_file="$ROBERTS_BASE_DIR/meetings/$meeting_id/motions/$motion_id.json"
+    local status="rejected"
+    [[ "$passed" == "true" ]] && status="passed"
+    
+    local temp_file=$(mktemp)
+    jq --arg status "$status" '.status = $status' "$motion_file" > "$temp_file"
+    mv "$temp_file" "$motion_file"
+    
+    echo "Vote tally: Aye=$aye_count, Nay=$nay_count, Abstain=$abstain_count - Motion $status"
+}
+
+# Main governance function
+govern_roberts() {
+    local command="${1:-help}"
+    shift || true
+    
+    case "$command" in
+        call-to-order)
+            call_to_order "$@"
+            ;;
+        submit-motion)
+            submit_motion "$@"
+            ;;
+        second)
+            second_motion "$@"
+            ;;
+        call-vote)
+            call_vote "$@"
+            ;;
+        cast-vote)
+            cast_vote "$@"
+            ;;
+        tally)
+            tally_votes "$@"
+            ;;
+        help|*)
+            cat <<EOF
+Roberts Rules Governance Commands:
+  call-to-order <chair> <members_file>       Start meeting
+  submit-motion <meeting> <type> <proposer> <desc>  Submit motion
+  second <meeting> <motion> <seconder>       Second a motion
+  call-vote <meeting>                        Call for vote
+  cast-vote <meeting> <vote_id> <member> <vote>    Cast vote
+  tally <meeting> <vote_id>                  Tally votes
+EOF
+            ;;
+    esac
+}
+
+# Export functions
+export -f get_nano_timestamp
+export -f generate_roberts_id
+export -f govern_roberts
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    govern_roberts "$@"
+fi

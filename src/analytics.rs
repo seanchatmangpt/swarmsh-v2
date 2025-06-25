@@ -81,6 +81,9 @@ impl AnalyticsEngine {
         let init_duration = start_time.elapsed();
         info!(init_duration_ms = init_duration.as_millis(), waste_categories_count = waste_metrics.len(), "Analytics engine initialized");
         
+        // Drop the write guard before returning the engine
+        drop(waste_metrics);
+        
         Ok(engine)
     }
     

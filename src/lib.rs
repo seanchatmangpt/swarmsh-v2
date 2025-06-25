@@ -243,6 +243,9 @@ pub enum SwarmError {
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
     
+    #[error("System time error: {0}")]
+    SystemTimeError(#[from] std::time::SystemTimeError),
+    
     #[error("Git operation failed: {0}")]
     GitOperation(String),
     

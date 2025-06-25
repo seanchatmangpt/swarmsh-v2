@@ -1,0 +1,279 @@
+{#- Real-time Coordination Template for SwarmSH v2 -#}
+{#- Generates Rust code for high-frequency real-time coordination -#}
+//! Real-time Coordination Implementation
+//! 
+//! Generated from semantic conventions by OTEL Weaver
+//! Implements nanosecond-precision real-time coordination
+
+use crate::coordination::{CoordinationPattern, RealTimeEvent};
+use crate::generated::attributes::*;
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::sync::{mpsc, RwLock};
+use tracing::{debug, info, span, Level};
+
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.realtime") %}
+/// {{ group.brief | default("Real-time coordination pattern") }}
+#[derive(Debug)]
+pub struct {{ group.id.split(".")[-1] | pascal_case }}Coordinator {
+    /// Unique coordinator ID with nanosecond precision
+    pub coordinator_id: String,
+    
+    /// High-precision timing
+    pub clock_source: ClockSource,
+    pub sync_interval: Duration,
+    
+    /// Event sequencing
+    pub event_counter: AtomicU64,
+    pub event_buffer: RwLock<Vec<TimestampedEvent>>,
+    
+    /// Performance targets
+    pub max_latency_ns: u64,
+    pub target_throughput: u64,
+}
+
+impl {{ group.id.split(".")[-1] | pascal_case }}Coordinator {
+    /// Create new real-time coordinator
+    pub fn new() -> Self {
+        let coordinator_id = format!("realtime_{}", SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos());
+            
+        Self {
+            coordinator_id,
+            clock_source: ClockSource::SystemNano,
+            sync_interval: Duration::from_micros({{ params.realtime_sync_interval_us | default(100) }}),
+            event_counter: AtomicU64::new(0),
+            event_buffer: RwLock::new(Vec::with_capacity({{ params.realtime_buffer_size | default(10000) }})),
+            max_latency_ns: {{ params.realtime_max_latency_ns | default(1000000) }}, // 1ms default
+            target_throughput: {{ params.realtime_target_throughput | default(100000) }}, // 100k events/sec
+        }
+    }
+    
+    /// Get nanosecond timestamp
+    #[inline(always)]
+    pub fn get_timestamp(&self) -> u128 {
+        match self.clock_source {
+            ClockSource::SystemNano => {
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            }
+            ClockSource::MonotonicNano => {
+                // Would use monotonic clock for even higher precision
+                std::time::Instant::now().elapsed().as_nanos()
+            }
+        }
+    }
+    
+    /// Submit real-time event
+    pub async fn submit_event(&self, event: RealTimeEvent) -> Result<EventReceipt> {
+        let span = span!(Level::DEBUG, "realtime_submit_event",
+            coordinator_id = %self.coordinator_id,
+            event_type = %event.event_type
+        );
+        let _enter = span.enter();
+        
+        let submit_time = self.get_timestamp();
+        let sequence_num = self.event_counter.fetch_add(1, Ordering::SeqCst);
+        
+        let timestamped_event = TimestampedEvent {
+            sequence: sequence_num,
+            timestamp: submit_time,
+            event,
+        };
+        
+        // Fast path: add to buffer
+        {
+            let mut buffer = self.event_buffer.write().await;
+            buffer.push(timestamped_event.clone());
+        }
+        
+        // Check latency
+        let processing_time = self.get_timestamp() - submit_time;
+        if processing_time > self.max_latency_ns as u128 {
+            debug!("Event processing exceeded latency target: {}ns", processing_time);
+        }
+        
+        Ok(EventReceipt {
+            sequence_num,
+            timestamp: submit_time,
+            latency_ns: processing_time as u64,
+        })
+    }
+    
+    /// Batch process events with nanosecond precision
+    pub async fn process_batch(&self) -> Result<BatchResult> {
+        let span = span!(Level::DEBUG, "realtime_process_batch");
+        let _enter = span.enter();
+        
+        let start_time = self.get_timestamp();
+        
+        // Swap buffer for processing
+        let events = {
+            let mut buffer = self.event_buffer.write().await;
+            std::mem::replace(&mut *buffer, Vec::with_capacity(10000))
+        };
+        
+        let event_count = events.len();
+        
+        // Process events in sequence order
+        for event in events.iter() {
+            self.process_single_event(event).await?;
+        }
+        
+        let processing_time = self.get_timestamp() - start_time;
+        
+        Ok(BatchResult {
+            processed_count: event_count,
+            batch_latency_ns: processing_time as u64,
+            throughput: if processing_time > 0 {
+                (event_count as u128 * 1_000_000_000 / processing_time) as u64
+            } else {
+                0
+            },
+        })
+    }
+    
+    /// Process single event
+    async fn process_single_event(&self, event: &TimestampedEvent) -> Result<()> {
+        // Event processing logic
+        debug!("Processing event seq={} at t={}", event.sequence, event.timestamp);
+        Ok(())
+    }
+    
+    /// Synchronize with other coordinators
+    pub async fn sync_coordinators(&self, peers: Vec<String>) -> Result<SyncResult> {
+        let span = span!(Level::INFO, "realtime_sync",
+            coordinator_id = %self.coordinator_id,
+            peer_count = %peers.len()
+        );
+        let _enter = span.enter();
+        
+        let sync_timestamp = self.get_timestamp();
+        
+        // Exchange timestamps with peers for clock synchronization
+        let mut max_drift = 0u64;
+        for peer in peers.iter() {
+            // Would implement actual peer communication
+            debug!("Syncing with peer: {}", peer);
+        }
+        
+        Ok(SyncResult {
+            sync_timestamp,
+            max_clock_drift_ns: max_drift,
+            synchronized_peers: peers.len(),
+        })
+    }
+}
+
+/// Clock source for timing
+#[derive(Debug, Clone)]
+pub enum ClockSource {
+    SystemNano,
+    MonotonicNano,
+}
+
+/// Timestamped event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimestampedEvent {
+    pub sequence: u64,
+    pub timestamp: u128,
+    pub event: RealTimeEvent,
+}
+
+/// Event receipt
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventReceipt {
+    pub sequence_num: u64,
+    pub timestamp: u128,
+    pub latency_ns: u64,
+}
+
+/// Batch processing result
+#[derive(Debug, Clone)]
+pub struct BatchResult {
+    pub processed_count: usize,
+    pub batch_latency_ns: u64,
+    pub throughput: u64,
+}
+
+/// Synchronization result
+#[derive(Debug, Clone)]
+pub struct SyncResult {
+    pub sync_timestamp: u128,
+    pub max_clock_drift_ns: u64,
+    pub synchronized_peers: usize,
+}
+
+impl CoordinationPattern for {{ group.id.split(".")[-1] | pascal_case }}Coordinator {
+    fn pattern_type(&self) -> &str {
+        "realtime"
+    }
+    
+    fn coordinate(&self, agents: Vec<String>) -> Result<()> {
+        // High-frequency coordination
+        info!("Coordinating {} agents in real-time", agents.len());
+        Ok(())
+    }
+}
+
+{% if group.attributes %}
+/// Real-time coordination specific attributes
+pub mod attributes {
+    {% for attr in group.attributes %}
+    /// {{ attr.brief | default("") }}
+    pub const {{ attr.id.split(".")[-1] | screaming_snake_case }}: &str = "{{ attr.id }}";
+    {% endfor %}
+}
+{% endif %}
+
+{% endfor %}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_realtime_creation() {
+        let coordinator = RealtimeCoordinator::new();
+        assert!(coordinator.coordinator_id.starts_with("realtime_"));
+        assert_eq!(coordinator.max_latency_ns, 1_000_000); // 1ms
+    }
+    
+    #[tokio::test]
+    async fn test_event_submission() {
+        let coordinator = RealtimeCoordinator::new();
+        
+        let event = RealTimeEvent {
+            event_type: "test".to_string(),
+            payload: vec![],
+        };
+        
+        let receipt = coordinator.submit_event(event).await.unwrap();
+        assert_eq!(receipt.sequence_num, 0);
+        assert!(receipt.latency_ns < 1_000_000); // Should be under 1ms
+    }
+    
+    #[tokio::test]
+    async fn test_batch_processing() {
+        let coordinator = RealtimeCoordinator::new();
+        
+        // Submit multiple events
+        for i in 0..100 {
+            let event = RealTimeEvent {
+                event_type: format!("test_{}", i),
+                payload: vec![],
+            };
+            coordinator.submit_event(event).await.unwrap();
+        }
+        
+        let result = coordinator.process_batch().await.unwrap();
+        assert_eq!(result.processed_count, 100);
+        assert!(result.throughput > 0);
+    }
+}

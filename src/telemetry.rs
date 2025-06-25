@@ -6,23 +6,22 @@
 use anyhow::{Context, Result};
 use opentelemetry::{
     global, 
-    trace::{TraceError, Tracer, TracerProvider},
+    trace::{Tracer, TracerProvider},
     KeyValue,
-    metrics::{Meter, MeterProvider},
+    metrics::Meter,
 };
 use opentelemetry_sdk::{
-    trace::{self, Sampler, TracerProvider as SdkTracerProvider},
+    trace::{self, TracerProvider as SdkTracerProvider},
     Resource,
-    runtime::Tokio,
 };
 use opentelemetry_stdout::SpanExporter as StdoutSpanExporter;
-use std::sync::Arc;
-use tracing::{info, warn, error, debug, instrument, Span};
+use tracing::{info, warn, debug, instrument};
 use tracing_subscriber::{
     layer::SubscriberExt,
     util::SubscriberInitExt,
     EnvFilter,
     fmt,
+    Layer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +137,7 @@ impl TelemetryManager {
     /// Initialize telemetry based on configuration mode
     #[instrument(skip(self))]
     async fn initialize(&mut self) -> Result<()> {
-        match &self.config.mode {
+        match self.config.mode.clone() {
             TelemetryMode::Disabled => {
                 info!("Telemetry disabled");
                 return Ok(());
@@ -180,11 +179,15 @@ impl TelemetryManager {
         // Initialize tracer with stdout exporter
         let tracer_provider = SdkTracerProvider::builder()
             .with_simple_exporter(StdoutSpanExporter::default())
-            .with_resource(resource.clone())
+            .with_config(
+                opentelemetry_sdk::trace::Config::default()
+                    .with_resource(resource.clone())
+            )
             .build();
         
         // Set up tracing subscriber with minimal formatting
-        let tracer = tracer_provider.tracer(&self.config.service_name);
+        let service_name = self.config.service_name.clone();
+        let tracer = tracer_provider.tracer(service_name);
         
         tracing_subscriber::registry()
             .with(tracing_opentelemetry::layer().with_tracer(tracer))
@@ -194,7 +197,8 @@ impl TelemetryManager {
                     .compact()
                     .with_filter(EnvFilter::new(&self.config.log_level))
             )
-            .init();
+            .try_init()
+            .ok();
         
         global::set_tracer_provider(tracer_provider.clone());
         self.tracer_provider = Some(tracer_provider);
@@ -215,7 +219,10 @@ impl TelemetryManager {
         // Multi-exporter setup for development
         let mut tracer_builder = SdkTracerProvider::builder()
             .with_simple_exporter(StdoutSpanExporter::default())
-            .with_resource(resource.clone());
+            .with_config(
+                opentelemetry_sdk::trace::Config::default()
+                    .with_resource(resource.clone())
+            );
         
         // Add file exporter if specified
         if let Some(file_path) = log_file {
@@ -226,7 +233,8 @@ impl TelemetryManager {
         }
         
         let tracer_provider = tracer_builder.build();
-        let tracer = tracer_provider.tracer(&self.config.service_name);
+        let service_name = self.config.service_name.clone();
+        let tracer = tracer_provider.tracer(service_name);
         
         // Enhanced tracing subscriber for development
         tracing_subscriber::registry()
@@ -240,7 +248,8 @@ impl TelemetryManager {
                     .pretty()
                     .with_filter(EnvFilter::new(&self.config.log_level))
             )
-            .init();
+            .try_init()
+            .ok();
         
         global::set_tracer_provider(tracer_provider.clone());
         self.tracer_provider = Some(tracer_provider);
@@ -264,7 +273,10 @@ impl TelemetryManager {
         ]);
         
         let mut tracer_builder = SdkTracerProvider::builder()
-            .with_resource(resource.clone());
+            .with_config(
+                opentelemetry_sdk::trace::Config::default()
+                    .with_resource(resource.clone())
+            );
         
         // Add Jaeger exporter if available
         #[cfg(feature = "jaeger")]
@@ -282,7 +294,8 @@ impl TelemetryManager {
         tracer_builder = tracer_builder.with_simple_exporter(StdoutSpanExporter::default());
         
         let tracer_provider = tracer_builder.build();
-        let tracer = tracer_provider.tracer(&self.config.service_name);
+        let service_name = self.config.service_name.clone();
+        let tracer = tracer_provider.tracer(service_name);
         
         // Production logging setup
         tracing_subscriber::registry()
@@ -292,7 +305,8 @@ impl TelemetryManager {
                     .json()
                     .with_filter(EnvFilter::new(&self.config.log_level))
             )
-            .init();
+            .try_init()
+            .ok();
         
         global::set_tracer_provider(tracer_provider.clone());
         self.tracer_provider = Some(tracer_provider);
@@ -312,13 +326,13 @@ impl TelemetryManager {
     }
     
     /// Get tracer for manual instrumentation
-    pub fn tracer(&self, name: &str) -> impl Tracer {
+    pub fn tracer(&self, name: &'static str) -> impl Tracer {
         global::tracer(name)
     }
 
     /// Get tracer for SwarmSH components (legacy compatibility)
-    pub fn get_tracer(&self, name: &str) -> impl Tracer {
-        self.tracer(name)
+    pub fn get_tracer(&self, name: &'static str) -> impl Tracer {
+        global::tracer(name)
     }
     
     /// Get meter for custom metrics
@@ -661,7 +675,8 @@ pub fn init_shell_telemetry(service_name: &str) -> Result<SdkTracerProvider> {
                 .with_target(false)
                 .compact()
         )
-        .init();
+        .try_init()
+        .ok();
 
     global::set_tracer_provider(provider.clone());
     Ok(provider)

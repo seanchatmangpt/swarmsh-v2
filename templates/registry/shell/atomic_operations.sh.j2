@@ -1,0 +1,287 @@
+{#- Shell Export Template for Atomic File Operations -#}
+{#- Generates zero-conflict file operation shell scripts -#}
+#!/bin/bash
+# Atomic File Operations Shell Implementation
+# Generated from semantic conventions by OTEL Weaver
+# Mathematically guaranteed zero-conflict file operations
+
+set -euo pipefail
+
+# Constants from semantic conventions
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.atomic") %}
+{% if group.attributes %}
+{% for attr in group.attributes %}
+readonly {{ attr.id.split(".")[-1] | screaming_snake_case }}="{{ attr.id }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+# Configuration parameters
+readonly LOCK_TIMEOUT_MS={{ params.atomic_lock_timeout_ms | default(5000) }}
+readonly RETRY_COUNT={{ params.atomic_retry_count | default(3) }}
+readonly CONFLICT_STRATEGY="{{ params.atomic_conflict_strategy | default("Retry") }}"
+
+# Base directory
+readonly ATOMIC_BASE_DIR="${SWARMSH_WORK_DIR:-/tmp/swarmsh}/atomic"
+mkdir -p "$ATOMIC_BASE_DIR"
+
+# Nanosecond timestamp
+get_nano_timestamp() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        python3 -c "import time; print(int(time.time() * 1e9))"
+    else
+        date +%s%N
+    fi
+}
+
+# Generate operation ID
+generate_operation_id() {
+    local nano_time=$(get_nano_timestamp)
+    echo "op_${nano_time}_$$"
+}
+
+# Acquire lock with timeout and retry
+acquire_lock() {
+    local lock_file="$1"
+    local timeout_ms="${2:-$LOCK_TIMEOUT_MS}"
+    local retry_count=0
+    
+    while [[ $retry_count -lt $RETRY_COUNT ]]; do
+        # Try to acquire lock
+        if mkdir "$lock_file" 2>/dev/null; then
+            # Write lock info
+            echo "{\"pid\": $$, \"time\": $(get_nano_timestamp)}" > "$lock_file/info.json"
+            return 0
+        fi
+        
+        # Check if lock is stale
+        if [[ -f "$lock_file/info.json" ]]; then
+            local lock_pid=$(jq -r .pid "$lock_file/info.json" 2>/dev/null || echo "")
+            if [[ -n "$lock_pid" ]] && ! kill -0 "$lock_pid" 2>/dev/null; then
+                # Lock holder is dead, remove stale lock
+                rm -rf "$lock_file"
+                continue
+            fi
+        fi
+        
+        # Retry with backoff
+        ((retry_count++))
+        sleep 0.1
+    done
+    
+    return 1
+}
+
+# Release lock
+release_lock() {
+    local lock_file="$1"
+    rm -rf "$lock_file"
+}
+
+# Atomic write operation
+atomic_write() {
+    local file_path="$1"
+    local data="${2:-}"
+    
+    local full_path="$ATOMIC_BASE_DIR/$file_path"
+    local dir_path=$(dirname "$full_path")
+    local lock_file="$full_path.lock"
+    local temp_file="$full_path.tmp.$$"
+    
+    # Create directory if needed
+    mkdir -p "$dir_path"
+    
+    # Generate operation ID
+    local operation_id=$(generate_operation_id)
+    local start_time=$(get_nano_timestamp)
+    
+    # Acquire exclusive lock
+    if ! acquire_lock "$lock_file"; then
+        echo "ERROR: Failed to acquire lock for $file_path" >&2
+        return 1
+    fi
+    
+    # Write to temporary file
+    if [[ -n "$data" ]]; then
+        echo "$data" > "$temp_file"
+    else
+        # Read from stdin if no data provided
+        cat > "$temp_file"
+    fi
+    
+    # Sync to disk
+    sync
+    
+    # Atomic rename
+    mv -f "$temp_file" "$full_path"
+    
+    # Release lock
+    release_lock "$lock_file"
+    
+    # Calculate duration
+    local end_time=$(get_nano_timestamp)
+    local duration_ns=$((end_time - start_time))
+    local bytes_written=$(stat -f%z "$full_path" 2>/dev/null || stat -c%s "$full_path")
+    
+    # Return receipt
+    cat <<EOF
+{
+    "operation_id": "$operation_id",
+    "path": "$file_path",
+    "bytes_written": $bytes_written,
+    "duration_ns": $duration_ns,
+    "conflict_count": 0
+}
+EOF
+}
+
+# Atomic read operation
+atomic_read() {
+    local file_path="$1"
+    
+    local full_path="$ATOMIC_BASE_DIR/$file_path"
+    local lock_file="$full_path.lock"
+    
+    local operation_id=$(generate_operation_id)
+    local start_time=$(get_nano_timestamp)
+    
+    # Acquire shared lock (for reading)
+    if ! acquire_lock "$lock_file"; then
+        echo "ERROR: Failed to acquire lock for $file_path" >&2
+        return 1
+    fi
+    
+    # Read file
+    if [[ -f "$full_path" ]]; then
+        cat "$full_path"
+        local exit_code=$?
+    else
+        echo "ERROR: File not found: $file_path" >&2
+        release_lock "$lock_file"
+        return 1
+    fi
+    
+    # Release lock
+    release_lock "$lock_file"
+    
+    # Calculate duration
+    local end_time=$(get_nano_timestamp)
+    local duration_ns=$((end_time - start_time))
+    
+    # Log operation to stderr
+    >&2 echo "{\"operation_id\": \"$operation_id\", \"duration_ns\": $duration_ns}"
+    
+    return $exit_code
+}
+
+# Atomic compare-and-swap
+atomic_cas() {
+    local file_path="$1"
+    local expected_value="$2"
+    local new_value="$3"
+    
+    local full_path="$ATOMIC_BASE_DIR/$file_path"
+    local lock_file="$full_path.lock"
+    
+    # Acquire exclusive lock
+    if ! acquire_lock "$lock_file"; then
+        echo "ERROR: Failed to acquire lock for $file_path" >&2
+        return 1
+    fi
+    
+    # Read current value
+    local current_value=""
+    if [[ -f "$full_path" ]]; then
+        current_value=$(cat "$full_path")
+    fi
+    
+    # Compare
+    if [[ "$current_value" == "$expected_value" ]]; then
+        # Swap
+        echo "$new_value" > "$full_path"
+        release_lock "$lock_file"
+        echo "true"
+        return 0
+    else
+        release_lock "$lock_file"
+        echo "false"
+        return 1
+    fi
+}
+
+# List atomic directory
+atomic_list() {
+    local dir_path="${1:-.}"
+    local full_path="$ATOMIC_BASE_DIR/$dir_path"
+    
+    if [[ -d "$full_path" ]]; then
+        ls -la "$full_path" | grep -v '\.lock$' | grep -v '\.tmp\.'
+    else
+        echo "ERROR: Directory not found: $dir_path" >&2
+        return 1
+    fi
+}
+
+# Clean up stale locks
+cleanup_locks() {
+    local max_age_seconds="${1:-3600}"  # 1 hour default
+    
+    find "$ATOMIC_BASE_DIR" -name "*.lock" -type d -mtime +$((max_age_seconds / 86400)) | while read lock_dir; do
+        echo "Removing stale lock: $lock_dir"
+        rm -rf "$lock_dir"
+    done
+}
+
+# Main coordination function
+coordinate_atomic() {
+    local command="${1:-help}"
+    shift || true
+    
+    case "$command" in
+        write)
+            atomic_write "$@"
+            ;;
+        read)
+            atomic_read "$@"
+            ;;
+        cas)
+            atomic_cas "$@"
+            ;;
+        list)
+            atomic_list "$@"
+            ;;
+        cleanup)
+            cleanup_locks "$@"
+            ;;
+        help|*)
+            cat <<EOF
+Atomic File Operations Commands:
+  write <path> [data]     Atomic write (reads from stdin if no data)
+  read <path>             Atomic read
+  cas <path> <expected> <new>  Compare-and-swap
+  list [directory]        List files in atomic directory
+  cleanup [max_age_sec]   Clean up stale locks
+  
+Environment Variables:
+  SWARMSH_WORK_DIR       Base directory (default: /tmp/swarmsh)
+  
+Examples:
+  echo "data" | $0 write myfile.txt
+  $0 read myfile.txt
+  $0 cas counter.txt "0" "1"
+EOF
+            ;;
+    esac
+}
+
+# Export functions
+export -f get_nano_timestamp
+export -f acquire_lock
+export -f release_lock
+export -f atomic_write
+export -f atomic_read
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    coordinate_atomic "$@"
+fi

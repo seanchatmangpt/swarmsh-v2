@@ -1,5 +1,5 @@
 # Weaver Forge Configuration for SwarmSH v2
-# Maximizes code generation from semantic conventions
+# Maximizes code generation from semantic conventions (targeting 85-90%)
 
 file_format: 0.1.0
 schema_url: https://opentelemetry.io/schemas/1.21.0
@@ -10,7 +10,9 @@ params:
   rust_module_name: generated
   enable_shell_export: true
   enable_ai_integration: true
-  target_coverage: 73
+  target_coverage: 90  # Increased from 73%
+  semconv_version: "1.21.0"
+  generation_timestamp: "2024-01-01T00:00:00Z"  # Will be replaced at generation time
   
   # SwarmSH-specific parameters
   coordination_patterns:
@@ -26,66 +28,134 @@ params:
     
 # Template definitions for code generation
 templates:
-  # Core Rust code generation (highest priority)
-  - template: "rust/attributes.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/attributes.rs"
-    
-  - template: "rust/span_builders.j2"
-    filter: ".groups[] | select(.type == \"span\")"
-    application_mode: single
-    file_name: "src/generated/span_builders.rs"
-    
-  - template: "rust/metrics.j2"
-    filter: ".groups[] | select(.type == \"metric\")"
-    application_mode: single
-    file_name: "src/generated/metrics.rs"
-    
-  - template: "rust/mod.j2"
+  # Core module file (must be first)
+  - template: "rust/mod.rs.j2"
     filter: "."
     application_mode: single
     file_name: "src/generated/mod.rs"
     
-  # Shell export generation (critical for SwarmSH)
-  - template: "shell/telemetry_constants.sh.j2"
+  # Core Rust code generation
+  - template: "rust/attributes.rs.j2"
     filter: "."
     application_mode: single
-    file_name: "shell-export/telemetry_constants.sh"
+    file_name: "src/generated/attributes.rs"
     
-  - template: "shell/coordination_helpers.sh.j2"
-    filter: ".groups[] | select(.id | startswith(\"swarmsh.coordination\"))"
+  - template: "rust/span_builders.rs.j2"
+    filter: "."
     application_mode: single
-    file_name: "shell-export/coordination_helpers.sh"
+    file_name: "src/generated/span_builders.rs"
     
-  # AI integration templates
-  - template: "rust/ai_attributes.j2"
-    filter: ".groups[] | select(.attributes[]? | select(.id | contains(\"ai\") or contains(\"ollama\")))"
+  - template: "rust/metrics.rs.j2"
+    filter: "."
     application_mode: single
-    file_name: "src/generated/ai_attributes.rs"
+    file_name: "src/generated/metrics.rs"
+    
+  - template: "rust/events.rs.j2"
+    filter: "."
+    application_mode: single
+    file_name: "src/generated/events.rs"
+    
+  - template: "rust/validation.rs.j2"
+    filter: "."
+    application_mode: single
+    file_name: "src/generated/validation.rs"
+    
+  - template: "rust/errors.rs.j2"
+    filter: "."
+    application_mode: single
+    file_name: "src/generated/errors.rs"
+    
+  - template: "rust/sdk_init.rs.j2"
+    filter: "."
+    application_mode: single
+    file_name: "src/generated/sdk_init.rs"
+    
+  # Test generation
+  - template: "rust/tests.rs.j2"
+    filter: "."
+    application_mode: single
+    file_name: "src/generated/tests.rs"
+    
+  # Shell export generation (critical for SwarmSH)
+  - template: "shell/telemetry_export.sh.j2"
+    filter: "."
+    application_mode: single
+    file_name: "shell-export/telemetry_export.sh"
+    
+  - template: "shell/span_tracking.sh.j2"
+    filter: "."
+    application_mode: single
+    file_name: "shell-export/span_tracking.sh"
+    
+  - template: "shell/metric_collection.sh.j2"
+    filter: "."
+    application_mode: single
+    file_name: "shell-export/metric_collection.sh"
     
   # Documentation generation
   - template: "docs/semantic_conventions.md.j2"
     filter: "."
     application_mode: single
-    file_name: "docs/SEMANTIC_CONVENTIONS.md"
+    file_name: "docs/GENERATED_SEMANTIC_CONVENTIONS.md"
     
-  # Test generation
-  - template: "rust/attribute_tests.j2"
+  # Integration tests
+  - template: "rust/integration_tests.rs.j2"
     filter: "."
     application_mode: single
-    file_name: "tests/generated_attribute_tests.rs"
+    file_name: "tests/generated_integration_tests.rs"
 
 # Custom filters and functions available in templates
 filters:
-  # SwarmSH-specific case conversions
+  # Case conversions
+  snake_case: "lambda s: s.lower().replace('.', '_').replace('-', '_')"
+  screaming_snake_case: "lambda s: s.upper().replace('.', '_').replace('-', '_')"
+  pascal_case: "lambda s: ''.join(word.capitalize() for word in s.replace('.', '_').split('_'))"
+  camel_case: "lambda s: s.replace('.', '_').split('_')[0] + ''.join(word.capitalize() for word in s.replace('.', '_').split('_')[1:])"
+  kebab_case: "lambda s: s.lower().replace('.', '-').replace('_', '-')"
+  
+  # Type conversions
+  rust_type: "lambda t: {'string': '&str', 'int': 'i64', 'double': 'f64', 'boolean': 'bool', 'string[]': 'Vec<&str>', 'int[]': 'Vec<i64>', 'double[]': 'Vec<f64>'}.get(t, 'String')"
+  rust_metric_type: "lambda t: {'counter': 'Counter', 'gauge': 'Gauge', 'histogram': 'Histogram', 'updowncounter': 'UpDownCounter'}.get(t, 'Counter')"
+  rust_value_type: "lambda t: {'counter': 'u64', 'gauge': 'f64', 'histogram': 'f64', 'updowncounter': 'i64'}.get(t, 'f64')"
+  rust_validation_fn: "lambda t: 'validate_' + t.replace('[]', '_array')"
+  rust_unit: "lambda u: u.replace('/', '_per_').replace(' ', '_').title()"
+  rust_attr_type: "lambda t: t.replace('[]', 'Array').title()"
+  
+  # Template helpers
+  quote: "lambda s: '\"' + str(s).replace('\"', '\\\\\"') + '\"'"
+  escape: "lambda s: str(s).replace('\\n', '\\\\n').replace('\"', '\\\\\"')"
+  indent: "lambda s, n=4: '\\n'.join(' ' * n + line if line else '' for line in str(s).split('\\n'))"
+  comment: "lambda s, style='rust': '\\n'.join(('// ' if style == 'rust' else '# ') + line for line in str(s).split('\\n'))"
+  
+  # Semantic convention helpers
+  is_required: "lambda attr: attr.get('requirement_level') == 'required'"
+  is_recommended: "lambda attr: attr.get('requirement_level') == 'recommended'"
+  has_examples: "lambda attr: bool(attr.get('examples'))"
+  
+  # SwarmSH-specific helpers
   swarmsh_const: "lambda s: 'SWARMSH_' + s.upper().replace('.', '_')"
   nano_id: "lambda prefix: f'{prefix}_{int(time.time() * 1e9)}'"
-  
-  # Coordination pattern helpers
   is_coordination_attr: "lambda id: id.startswith('swarmsh.coordination')"
   is_ai_attr: "lambda id: 'ai' in id or 'ollama' in id"
+
+# Jinja2 environment settings
+jinja2:
+  # Enable useful extensions
+  extensions:
+    - jinja2.ext.do
+    - jinja2.ext.loopcontrols
   
+  # Custom global functions
+  globals:
+    now: "lambda: datetime.now().isoformat()"
+    env: "lambda k, d=None: os.environ.get(k, d)"
+  
+  # Template options
+  options:
+    trim_blocks: true
+    lstrip_blocks: true
+    keep_trailing_newline: true
+
 # Validation rules
 validation:
   # Ensure generated code compiles
@@ -98,5 +168,25 @@ validation:
     
   # Check code coverage target
   - type: coverage_check
-    target: 73
+    target: 90
     command: "scripts/measure-generation-coverage.sh"
+    
+  # Validate semantic conventions
+  - type: semconv_validation
+    command: "weaver registry check"
+
+# Weaver registry configuration
+registry:
+  # Registry manifest
+  manifest: "semantic-conventions/registry_manifest.yaml"
+  
+  # Convention files
+  conventions:
+    - "semantic-conventions/swarmsh-agent.yaml"
+    - "semantic-conventions/swarmsh-analytics.yaml"
+    - "semantic-conventions/swarmsh-coordination.yaml"
+    - "semantic-conventions/swarmsh-health.yaml"
+    - "semantic-conventions/swarmsh-work.yaml"
+    - "semantic-conventions/swarmsh-worktree.yaml"
+    - "semantic-conventions/swarmsh-infinite-loop.yaml"
+    - "semantic-conventions/swarmsh-auto-8020.yaml"

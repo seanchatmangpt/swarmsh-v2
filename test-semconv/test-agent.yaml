@@ -1,0 +1,21 @@
+groups:
+  - id: swarmsh.agent
+    type: span
+    stability: stable
+    span_kind: internal
+    brief: "Agent lifecycle operations"
+    note: "Simple agent operations for testing"
+    attributes:
+      - id: agent.id
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Agent identifier"
+        examples: ["agent_123", "agent_456"]
+        
+      - id: agent.role
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Agent role"
+        examples: ["coordinator", "worker"]

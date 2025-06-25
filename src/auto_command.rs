@@ -92,7 +92,7 @@ impl AutoEngine {
     pub fn new(analytics: AnalyticsEngine) -> Self {
         Self {
             analytics,
-            telemetry: DefaultSwarmTelemetry,
+            telemetry: DefaultSwarmTelemetry::new("auto_engine".to_string()),
             config: ValueDetectionConfig::default(),
         }
     }
@@ -101,7 +101,7 @@ impl AutoEngine {
     pub fn with_config(analytics: AnalyticsEngine, config: ValueDetectionConfig) -> Self {
         Self {
             analytics,
-            telemetry: DefaultSwarmTelemetry,
+            telemetry: DefaultSwarmTelemetry::new("auto_engine".to_string()),
             config,
         }
     }

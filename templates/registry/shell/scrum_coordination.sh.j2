@@ -1,0 +1,265 @@
+{#- Shell Export Template for Scrum at Scale Coordination -#}
+{#- Generates portable shell scripts for Scrum coordination -#}
+#!/bin/bash
+# Scrum at Scale Coordination Shell Implementation
+# Generated from semantic conventions by OTEL Weaver
+# Maintains nanosecond precision and zero-conflict guarantees
+
+set -euo pipefail
+
+# Constants from semantic conventions
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.scrum") %}
+{% if group.attributes %}
+{% for attr in group.attributes %}
+readonly {{ attr.id.split(".")[-1] | screaming_snake_case }}="{{ attr.id }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+# Configuration parameters
+readonly SPRINT_DURATION_SECONDS={{ params.scrum_sprint_duration | default(604800) }}
+readonly MIN_TEAM_SIZE={{ params.scrum_min_team_size | default(3) }}
+readonly MAX_TEAM_SIZE={{ params.scrum_max_team_size | default(9) }}
+readonly SCRUM_OF_SCRUMS_THRESHOLD={{ params.scrum_scaling_threshold | default(5) }}
+readonly EXECUTIVE_ACTION_TEAM_SIZE={{ params.scrum_eat_size | default(5) }}
+
+# Base directory for coordination
+readonly SCRUM_BASE_DIR="${SWARMSH_WORK_DIR:-/tmp/swarmsh}/scrum"
+mkdir -p "$SCRUM_BASE_DIR"
+
+# Get nanosecond timestamp
+get_nano_timestamp() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS: Use python for nanosecond precision
+        python3 -c "import time; print(int(time.time() * 1e9))"
+    else
+        # Linux: Use date command
+        date +%s%N
+    fi
+}
+
+# Generate unique ID with nanosecond precision
+generate_scrum_id() {
+    local prefix="${1:-scrum}"
+    local timestamp=$(get_nano_timestamp)
+    echo "${prefix}_${timestamp}_$$"
+}
+
+# Initialize sprint
+init_sprint() {
+    local sprint_id=$(generate_scrum_id "sprint")
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    
+    mkdir -p "$sprint_dir"/{teams,backlog,metrics}
+    
+    # Create sprint metadata
+    cat > "$sprint_dir/metadata.json" <<EOF
+{
+    "sprint_id": "$sprint_id",
+    "start_time": $(get_nano_timestamp),
+    "duration_seconds": $SPRINT_DURATION_SECONDS,
+    "status": "planning"
+}
+EOF
+    
+    echo "$sprint_id"
+}
+
+# Form scrum teams from agent list
+form_scrum_teams() {
+    local sprint_id="$1"
+    local agents_file="$2"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    
+    # Read agents
+    local -a agents
+    mapfile -t agents < "$agents_file"
+    local total_agents=${#agents[@]}
+    
+    echo "Forming teams for $total_agents agents"
+    
+    local team_count=0
+    local current_team=()
+    
+    for agent in "${agents[@]}"; do
+        current_team+=("$agent")
+        
+        if [[ ${#current_team[@]} -eq $MAX_TEAM_SIZE ]]; then
+            # Save team
+            local team_id=$(generate_scrum_id "team")
+            printf '%s\n' "${current_team[@]}" > "$sprint_dir/teams/$team_id.txt"
+            
+            # Create team metadata
+            cat > "$sprint_dir/teams/$team_id.json" <<EOF
+{
+    "team_id": "$team_id",
+    "members": [$(printf '"%s",' "${current_team[@]}" | sed 's/,$//')]],
+    "size": ${#current_team[@]},
+    "scrum_master": null,
+    "product_owner": null
+}
+EOF
+            ((team_count++))
+            current_team=()
+        fi
+    done
+    
+    # Handle remaining agents
+    if [[ ${#current_team[@]} -gt 0 ]]; then
+        local team_id=$(generate_scrum_id "team")
+        printf '%s\n' "${current_team[@]}" > "$sprint_dir/teams/$team_id.txt"
+        ((team_count++))
+    fi
+    
+    # Check if Scrum of Scrums needed
+    if [[ $team_count -ge $SCRUM_OF_SCRUMS_THRESHOLD ]]; then
+        echo "Forming Scrum of Scrums for $team_count teams"
+        form_scrum_of_scrums "$sprint_id" "$team_count"
+    fi
+    
+    echo "$team_count"
+}
+
+# Form Scrum of Scrums for scaling
+form_scrum_of_scrums() {
+    local sprint_id="$1"
+    local team_count="$2"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    
+    mkdir -p "$sprint_dir/scrum_of_scrums"
+    
+    # Select representatives from each team
+    local sos_id=$(generate_scrum_id "sos")
+    
+    cat > "$sprint_dir/scrum_of_scrums/$sos_id.json" <<EOF
+{
+    "sos_id": "$sos_id",
+    "team_count": $team_count,
+    "formed_at": $(get_nano_timestamp),
+    "representatives": []
+}
+EOF
+}
+
+# Execute daily scrum (atomic file operations)
+execute_daily_scrum() {
+    local sprint_id="$1"
+    local team_id="$2"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    local daily_dir="$sprint_dir/daily_scrums"
+    
+    mkdir -p "$daily_dir"
+    
+    local scrum_id=$(generate_scrum_id "daily")
+    local scrum_file="$daily_dir/${team_id}_${scrum_id}.json"
+    local lock_file="$scrum_file.lock"
+    
+    # Atomic write with lock
+    (
+        flock -x 200
+        
+        cat > "$scrum_file" <<EOF
+{
+    "scrum_id": "$scrum_id",
+    "team_id": "$team_id",
+    "timestamp": $(get_nano_timestamp),
+    "updates": []
+}
+EOF
+        
+    ) 200>"$lock_file"
+    
+    echo "$scrum_id"
+}
+
+# Update sprint backlog (thread-safe)
+update_backlog() {
+    local sprint_id="$1"
+    local item_json="$2"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    local backlog_file="$sprint_dir/backlog/items.jsonl"
+    local lock_file="$backlog_file.lock"
+    
+    # Atomic append with lock
+    (
+        flock -x 200
+        echo "$item_json" >> "$backlog_file"
+    ) 200>"$lock_file"
+}
+
+# Calculate sprint velocity
+calculate_velocity() {
+    local sprint_id="$1"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    local completed_points=0
+    
+    if [[ -f "$sprint_dir/backlog/completed.jsonl" ]]; then
+        completed_points=$(jq -s 'map(.story_points // 0) | add' "$sprint_dir/backlog/completed.jsonl" 2>/dev/null || echo "0")
+    fi
+    
+    echo "$completed_points"
+}
+
+# Sprint retrospective
+conduct_retrospective() {
+    local sprint_id="$1"
+    local sprint_dir="$SCRUM_BASE_DIR/sprints/$sprint_id"
+    local retro_file="$sprint_dir/retrospective.json"
+    
+    local velocity=$(calculate_velocity "$sprint_id")
+    local end_time=$(get_nano_timestamp)
+    
+    cat > "$retro_file" <<EOF
+{
+    "sprint_id": "$sprint_id",
+    "end_time": $end_time,
+    "velocity": $velocity,
+    "team_count": $(ls "$sprint_dir/teams"/*.txt 2>/dev/null | wc -l),
+    "insights": []
+}
+EOF
+}
+
+# Main coordination function
+coordinate_scrum() {
+    local command="${1:-help}"
+    shift || true
+    
+    case "$command" in
+        init)
+            init_sprint
+            ;;
+        form-teams)
+            form_scrum_teams "$@"
+            ;;
+        daily-scrum)
+            execute_daily_scrum "$@"
+            ;;
+        update-backlog)
+            update_backlog "$@"
+            ;;
+        retrospective)
+            conduct_retrospective "$@"
+            ;;
+        help|*)
+            cat <<EOF
+Scrum at Scale Coordination Commands:
+  init                    Initialize new sprint
+  form-teams <sprint> <agents_file>  Form scrum teams
+  daily-scrum <sprint> <team>        Execute daily scrum
+  update-backlog <sprint> <item>     Update sprint backlog
+  retrospective <sprint>             Conduct retrospective
+EOF
+            ;;
+    esac
+}
+
+# Export functions for use by other scripts
+export -f get_nano_timestamp
+export -f generate_scrum_id
+export -f coordinate_scrum
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    coordinate_scrum "$@"
+fi

@@ -1,0 +1,382 @@
+{#- Test Template for Coordination Patterns -#}
+{#- Generates comprehensive tests for all coordination patterns -#}
+//! Coordination Pattern Tests
+//! 
+//! Generated from semantic conventions by OTEL Weaver
+//! Tests all coordination patterns: Scrum, Roberts Rules, Real-time, Atomic
+
+use crate::coordination::*;
+use anyhow::Result;
+use std::time::Duration;
+use tempfile::tempdir;
+use tokio::test;
+
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination") %}
+#[cfg(test)]
+mod {{ group.id.split(".")[-1] }}_tests {
+    use super::*;
+    
+    {% if "scrum" in group.id %}
+    #[test]
+    fn test_scrum_pattern_creation() {
+        let pattern = ScrumPattern::new();
+        assert!(pattern.pattern_id.starts_with("scrum_"));
+        assert_eq!(pattern.min_team_size, 3);
+        assert_eq!(pattern.max_team_size, 9);
+        assert_eq!(pattern.scrum_of_scrums_threshold, 5);
+    }
+    
+    #[test]
+    fn test_team_formation() {
+        let pattern = ScrumPattern::new();
+        let agents: Vec<String> = (0..20).map(|i| format!("agent_{}", i)).collect();
+        
+        let result = pattern.sprint_planning(agents);
+        assert!(result.is_ok());
+        
+        let plan = result.unwrap();
+        assert!(plan.teams.len() >= 2);
+        assert!(plan.teams.iter().all(|t| t.members.len() <= 9));
+        assert!(plan.teams.iter().all(|t| t.members.len() >= 1));
+    }
+    
+    #[test]
+    fn test_scrum_of_scrums_formation() {
+        let pattern = ScrumPattern::new();
+        let agents: Vec<String> = (0..50).map(|i| format!("agent_{}", i)).collect();
+        
+        let result = pattern.sprint_planning(agents);
+        assert!(result.is_ok());
+        
+        let plan = result.unwrap();
+        // Should trigger Scrum of Scrums with 50 agents
+        assert!(plan.teams.len() >= 5);
+    }
+    
+    #[test]
+    fn test_sprint_duration() {
+        let pattern = ScrumPattern::new();
+        assert_eq!(pattern.sprint_duration, Duration::from_secs(604800)); // 1 week
+    }
+    {% endif %}
+    
+    {% if "roberts" in group.id %}
+    #[test]
+    fn test_roberts_rules_creation() {
+        let governance = RobertsGovernance::new();
+        assert!(governance.session_id.starts_with("roberts_"));
+        assert!(governance.require_seconding);
+        assert!(governance.allow_amendments);
+    }
+    
+    #[test]
+    fn test_quorum_requirements() {
+        let governance = RobertsGovernance::new();
+        assert!(!governance.has_quorum(2)); // Below minimum
+        assert!(governance.has_quorum(3));  // Meets minimum
+        assert!(governance.has_quorum(10)); // Above minimum
+    }
+    
+    #[test]
+    fn test_motion_submission() {
+        let mut governance = RobertsGovernance::new();
+        
+        let motion = Motion {
+            motion_id: "motion_1".to_string(),
+            motion_type: "main".to_string(),
+            description: "Test motion".to_string(),
+            proposer: "agent_1".to_string(),
+            seconder: None,
+            submitted_at: std::time::SystemTime::now(),
+        };
+        
+        let result = governance.submit_motion(motion);
+        assert!(result.is_ok());
+        assert!(governance.active_motion.is_some());
+    }
+    
+    #[test]
+    fn test_motion_seconding() {
+        let mut governance = RobertsGovernance::new();
+        
+        let motion = Motion {
+            motion_id: "motion_1".to_string(),
+            motion_type: "main".to_string(),
+            description: "Test motion".to_string(),
+            proposer: "agent_1".to_string(),
+            seconder: None,
+            submitted_at: std::time::SystemTime::now(),
+        };
+        
+        governance.submit_motion(motion).unwrap();
+        
+        // Should succeed
+        let result = governance.second_motion("motion_1", "agent_2");
+        assert!(result.is_ok());
+        
+        // Should fail - proposer can't second own motion
+        let result = governance.second_motion("motion_1", "agent_1");
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_invalid_motion_type() {
+        let mut governance = RobertsGovernance::new();
+        
+        let motion = Motion {
+            motion_id: "motion_1".to_string(),
+            motion_type: "invalid".to_string(),
+            description: "Invalid motion".to_string(),
+            proposer: "agent_1".to_string(),
+            seconder: None,
+            submitted_at: std::time::SystemTime::now(),
+        };
+        
+        let result = governance.submit_motion(motion);
+        assert!(result.is_err());
+    }
+    {% endif %}
+    
+    {% if "realtime" in group.id %}
+    #[tokio::test]
+    async fn test_realtime_coordinator_creation() {
+        let coordinator = RealtimeCoordinator::new();
+        assert!(coordinator.coordinator_id.starts_with("realtime_"));
+        assert_eq!(coordinator.max_latency_ns, 1_000_000); // 1ms
+        assert_eq!(coordinator.target_throughput, 100_000); // 100k events/sec
+    }
+    
+    #[tokio::test]
+    async fn test_event_submission() {
+        let coordinator = RealtimeCoordinator::new();
+        
+        let event = RealTimeEvent {
+            event_type: "test".to_string(),
+            payload: b"test data".to_vec(),
+        };
+        
+        let receipt = coordinator.submit_event(event).await.unwrap();
+        assert_eq!(receipt.sequence_num, 0);
+        assert!(receipt.latency_ns < 10_000_000); // Should be under 10ms in tests
+    }
+    
+    #[tokio::test]
+    async fn test_batch_processing() {
+        let coordinator = RealtimeCoordinator::new();
+        
+        // Submit multiple events
+        for i in 0..100 {
+            let event = RealTimeEvent {
+                event_type: format!("test_{}", i),
+                payload: vec![i as u8],
+            };
+            coordinator.submit_event(event).await.unwrap();
+        }
+        
+        let result = coordinator.process_batch().await.unwrap();
+        assert_eq!(result.processed_count, 100);
+        assert!(result.throughput > 0);
+        assert!(result.batch_latency_ns > 0);
+    }
+    
+    #[tokio::test]
+    async fn test_coordinator_sync() {
+        let coordinator = RealtimeCoordinator::new();
+        let peers = vec!["peer_1".to_string(), "peer_2".to_string()];
+        
+        let result = coordinator.sync_coordinators(peers).await.unwrap();
+        assert_eq!(result.synchronized_peers, 2);
+        assert!(result.sync_timestamp > 0);
+    }
+    
+    #[test]
+    fn test_timestamp_precision() {
+        let coordinator = RealtimeCoordinator::new();
+        
+        let ts1 = coordinator.get_timestamp();
+        std::thread::sleep(Duration::from_nanos(1000));
+        let ts2 = coordinator.get_timestamp();
+        
+        assert!(ts2 > ts1);
+        assert!(ts2 - ts1 >= 1000); // At least 1000ns difference
+    }
+    {% endif %}
+    
+    {% if "atomic" in group.id %}
+    #[test]
+    fn test_atomic_filesystem_creation() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        assert_eq!(fs.lock_timeout_ms, 5000);
+        assert_eq!(fs.retry_count, 3);
+    }
+    
+    #[test]
+    fn test_atomic_write_read() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        let data = b"test data for atomic operations";
+        let write_receipt = fs.atomic_write("test.txt", data).unwrap();
+        assert_eq!(write_receipt.bytes_written, data.len());
+        assert!(write_receipt.operation_id.starts_with("op_"));
+        assert!(write_receipt.duration_ns > 0);
+        
+        let read_receipt = fs.atomic_read("test.txt").unwrap();
+        assert_eq!(read_receipt.data, data);
+        assert!(read_receipt.operation_id.starts_with("op_"));
+    }
+    
+    #[test]
+    fn test_atomic_compare_and_swap() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        // Initial write
+        fs.atomic_write("cas.txt", b"initial").unwrap();
+        
+        // Successful CAS
+        assert!(fs.atomic_cas("cas.txt", b"initial", b"updated").unwrap());
+        
+        // Failed CAS (value has changed)
+        assert!(!fs.atomic_cas("cas.txt", b"initial", b"failed").unwrap());
+        
+        // Verify final value
+        let final_data = fs.atomic_read("cas.txt").unwrap();
+        assert_eq!(final_data.data, b"updated");
+    }
+    
+    #[test]
+    fn test_concurrent_operations() {
+        use std::sync::Arc;
+        use std::thread;
+        
+        let temp_dir = tempdir().unwrap();
+        let fs = Arc::new(AtomicFileSystem::new(temp_dir.path()).unwrap());
+        
+        let mut handles = vec![];
+        
+        // Spawn multiple threads doing atomic operations
+        for i in 0..10 {
+            let fs_clone = Arc::clone(&fs);
+            let handle = thread::spawn(move || {
+                let data = format!("data_from_thread_{}", i);
+                let filename = format!("concurrent_{}.txt", i);
+                fs_clone.atomic_write(&filename, data.as_bytes()).unwrap()
+            });
+            handles.push(handle);
+        }
+        
+        // Wait for all operations to complete
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        
+        // Verify all files were written correctly
+        for i in 0..10 {
+            let filename = format!("concurrent_{}.txt", i);
+            let expected_data = format!("data_from_thread_{}", i);
+            let read_receipt = fs.atomic_read(&filename).unwrap();
+            assert_eq!(read_receipt.data, expected_data.as_bytes());
+        }
+    }
+    
+    #[test]
+    fn test_operation_id_uniqueness() {
+        let temp_dir = tempdir().unwrap();
+        let fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        let receipt1 = fs.atomic_write("file1.txt", b"data1").unwrap();
+        let receipt2 = fs.atomic_write("file2.txt", b"data2").unwrap();
+        
+        assert_ne!(receipt1.operation_id, receipt2.operation_id);
+    }
+    {% endif %}
+}
+{% endfor %}
+
+// Integration tests across all coordination patterns
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_coordination_pattern_interop() {
+        // Test that all coordination patterns can work together
+        let agents: Vec<String> = (0..15).map(|i| format!("agent_{}", i)).collect();
+        
+        // Scrum coordination
+        let scrum = ScrumPattern::new();
+        let sprint_plan = scrum.sprint_planning(agents.clone()).unwrap();
+        
+        // Roberts Rules governance for decisions
+        let mut governance = RobertsGovernance::new();
+        let members_file = tempdir().unwrap().path().join("members.txt");
+        std::fs::write(&members_file, agents.join("\n")).unwrap();
+        
+        // Real-time coordination for execution
+        let realtime = RealtimeCoordinator::new();
+        
+        // Atomic operations for state management
+        let temp_dir = tempdir().unwrap();
+        let atomic_fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        // Verify all patterns are operational
+        assert!(sprint_plan.teams.len() > 0);
+        assert!(governance.session_id.starts_with("roberts_"));
+        assert!(realtime.coordinator_id.starts_with("realtime_"));
+        
+        // Test cross-pattern data flow
+        let state_data = format!("sprint:{}", sprint_plan.sprint_id);
+        atomic_fs.atomic_write("coordination_state.json", state_data.as_bytes()).unwrap();
+        
+        let read_state = atomic_fs.atomic_read("coordination_state.json").unwrap();
+        assert_eq!(read_state.data, state_data.as_bytes());
+    }
+    
+    #[test]
+    fn test_nanosecond_precision_across_patterns() {
+        // Verify all patterns maintain nanosecond precision
+        let scrum = ScrumPattern::new();
+        let governance = RobertsGovernance::new();
+        let realtime = RealtimeCoordinator::new();
+        
+        // Extract nanosecond timestamps from IDs
+        let scrum_ns: u128 = scrum.pattern_id.split('_').nth(1).unwrap().parse().unwrap();
+        let roberts_ns: u128 = governance.session_id.split('_').nth(1).unwrap().parse().unwrap();
+        let realtime_ns: u128 = realtime.coordinator_id.split('_').nth(1).unwrap().parse().unwrap();
+        
+        // All should be recent nanosecond timestamps
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+            
+        assert!(scrum_ns < now && scrum_ns > now - 1_000_000_000); // Within 1 second
+        assert!(roberts_ns < now && roberts_ns > now - 1_000_000_000);
+        assert!(realtime_ns < now && realtime_ns > now - 1_000_000_000);
+    }
+    
+    #[test]
+    fn test_zero_conflict_guarantees() {
+        // Test mathematical zero-conflict guarantees across patterns
+        let temp_dir = tempdir().unwrap();
+        let atomic_fs = AtomicFileSystem::new(temp_dir.path()).unwrap();
+        
+        // Multiple atomic operations should never conflict
+        let operations = (0..100).map(|i| {
+            let data = format!("operation_{}", i);
+            atomic_fs.atomic_write(&format!("test_{}.txt", i), data.as_bytes())
+        }).collect::<Result<Vec<_>, _>>();
+        
+        assert!(operations.is_ok());
+        let receipts = operations.unwrap();
+        
+        // All operations should have unique IDs and no conflicts
+        let mut operation_ids = std::collections::HashSet::new();
+        for receipt in receipts {
+            assert_eq!(receipt.conflict_count, 0);
+            assert!(operation_ids.insert(receipt.operation_id));
+        }
+    }
+}

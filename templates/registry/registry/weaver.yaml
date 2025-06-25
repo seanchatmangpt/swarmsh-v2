@@ -1,0 +1,20 @@
+templates:
+  # Test template for basic generation
+  - template: "simple_test.j2"
+    application_mode: single
+    file_name: "test_generated.rs"
+    
+  # Core attribute constants
+  - template: "attributes.rs.j2"
+    application_mode: single
+    file_name: "attributes.rs"
+    
+  # Span builders
+  - template: "span_builders.rs.j2"
+    application_mode: single
+    file_name: "span_builders.rs"
+    
+  # Metrics
+  - template: "metrics.rs.j2"
+    application_mode: single
+    file_name: "metrics.rs"

@@ -72,6 +72,7 @@ ollama-rs = { version = "0.3.1", optional = true }
 async-stream = "0.3"
 anyhow = "1.0"
 thiserror = "1.0"
+futures = "0.3"
 
 # DLSS Analytics
 # statistical-analysis = "0.2"  # Will add custom analytics implementation

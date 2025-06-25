@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, span, Level};
+use chrono;
 
 /// Weaver template configuration from weaver.yaml
 #[derive(Debug, Deserialize, Serialize)]
@@ -31,7 +32,7 @@ pub struct WeaverConfig {
 }
 
 /// Individual template configuration
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TemplateConfig {
     /// Template file path relative to templates directory
     pub template: String,
@@ -61,6 +62,8 @@ pub struct WeaverForge {
     config: WeaverConfig,
     /// MiniJinja environment
     env: minijinja::Environment<'static>,
+    /// Template cache to maintain lifetime
+    template_cache: HashMap<String, String>,
 }
 
 impl WeaverForge {
@@ -91,19 +94,55 @@ impl WeaverForge {
         env.set_auto_escape_callback(|_| minijinja::AutoEscape::None);
         
         // Add custom filters
+        // Case conversion filters
         env.add_filter("snake_case", snake_case_filter);
         env.add_filter("camel_case", camel_case_filter);
         env.add_filter("pascal_case", pascal_case_filter);
         env.add_filter("kebab_case", kebab_case_filter);
         env.add_filter("screaming_snake_case", screaming_snake_case_filter);
+        
+        // Text manipulation filters
         env.add_filter("comment", comment_filter);
         env.add_filter("prefix", prefix_filter);
         env.add_filter("suffix", suffix_filter);
+        env.add_filter("quote", quote_filter);
+        env.add_filter("escape", escape_filter);
+        env.add_filter("indent", indent_filter);
+        
+        // Type conversion filters
+        env.add_filter("rust_type", rust_type_filter);
+        env.add_filter("rust_metric_type", rust_metric_type_filter);
+        env.add_filter("rust_value_type", rust_value_type_filter);
+        env.add_filter("rust_validation_fn", rust_validation_fn_filter);
+        env.add_filter("rust_unit", rust_unit_filter);
+        env.add_filter("rust_attr_type", rust_attr_type_filter);
+        env.add_filter("rust_metric_init", rust_metric_init_filter);
+        
+        // List operation filters  
+        env.add_filter("selectattr", selectattr_filter);
+        env.add_filter("rejectattr", rejectattr_filter);
+        env.add_filter("map", map_filter);
+        env.add_filter("slice", slice_filter);
+        
+        // Semantic convention helpers
+        env.add_filter("is_required", is_required_filter);
+        env.add_filter("is_recommended", is_recommended_filter);
+        env.add_filter("has_examples", has_examples_filter);
+        
+        // SwarmSH-specific filters
+        env.add_filter("swarmsh_const", swarmsh_const_filter);
+        env.add_filter("is_coordination_attr", is_coordination_attr_filter);
+        env.add_filter("is_ai_attr", is_ai_attr_filter);
+        
+        // Global functions
+        env.add_function("now", now_function);
+        env.add_function("env", env_function);
 
         Ok(Self {
             template_dir,
             config,
             env,
+            template_cache: HashMap::new(),
         })
     }
 
@@ -226,13 +265,22 @@ impl WeaverForge {
         let _enter = span.enter();
 
         let template_path = self.template_dir.join(template_name);
-        let template_content = fs::read_to_string(&template_path)
-            .with_context(|| format!("Failed to read template: {}", template_path.display()))?;
-
-        self.env.add_template(template_name, &template_content)
+        
+        // Check if template is already cached
+        if !self.template_cache.contains_key(template_name) {
+            let template_content = fs::read_to_string(&template_path)
+                .with_context(|| format!("Failed to read template: {}", template_path.display()))?;
+            
+            // Store in cache before adding to environment
+            self.template_cache.insert(template_name.to_string(), template_content);
+        }
+        
+        // Get from cache and create template directly
+        let cached_content = self.template_cache.get(template_name)
+            .context("Template should be in cache")?;
+        
+        let template = self.env.template_from_str(cached_content)
             .context("Failed to compile template")?;
-
-        let template = self.env.get_template(template_name)?;
         
         // Build rendering context
         let mut render_context = minijinja::context! {
@@ -372,6 +420,216 @@ fn prefix_filter(value: &str, prefix: &str) -> String {
 
 fn suffix_filter(value: &str, suffix: &str) -> String {
     format!("{}{}", value, suffix)
+}
+
+// Additional filter implementations for Weaver Forge templates
+
+fn quote_filter(value: &str) -> String {
+    format!("{:?}", value)
+}
+
+fn escape_filter(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\"', "\\\"")
+}
+
+fn indent_filter(value: &str, indent: Option<usize>) -> String {
+    let indent_size = indent.unwrap_or(4);
+    let indent_str = " ".repeat(indent_size);
+    value
+        .lines()
+        .map(|line| {
+            if line.is_empty() {
+                line.to_string()
+            } else {
+                format!("{}{}", indent_str, line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+// Type conversion filters
+fn rust_type_filter(attr_type: &str) -> String {
+    match attr_type {
+        "string" => "&str",
+        "int" => "i64",
+        "double" => "f64",
+        "boolean" => "bool",
+        "string[]" => "Vec<&str>",
+        "int[]" => "Vec<i64>",
+        "double[]" => "Vec<f64>",
+        "boolean[]" => "Vec<bool>",
+        _ => "String",
+    }.to_string()
+}
+
+fn rust_metric_type_filter(instrument: &str) -> String {
+    match instrument {
+        "counter" => "Counter",
+        "gauge" => "Gauge",
+        "histogram" => "Histogram",
+        "updowncounter" => "UpDownCounter",
+        _ => "Counter",
+    }.to_string()
+}
+
+fn rust_value_type_filter(instrument: &str) -> String {
+    match instrument {
+        "counter" => "u64",
+        "gauge" => "f64",
+        "histogram" => "f64",
+        "updowncounter" => "i64",
+        _ => "f64",
+    }.to_string()
+}
+
+fn rust_validation_fn_filter(attr_type: &str) -> String {
+    format!("validate_{}", attr_type.replace("[]", "_array"))
+}
+
+fn rust_unit_filter(unit: &str) -> String {
+    unit.replace('/', "_per_")
+        .replace(' ', "_")
+        .chars()
+        .enumerate()
+        .map(|(i, c)| {
+            if i == 0 || unit.chars().nth(i - 1) == Some('_') {
+                c.to_uppercase().collect::<String>()
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
+}
+
+fn rust_attr_type_filter(attr_type: &str) -> String {
+    attr_type
+        .replace("[]", "Array")
+        .chars()
+        .enumerate()
+        .map(|(i, c)| {
+            if i == 0 {
+                c.to_uppercase().collect::<String>()
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
+}
+
+fn rust_metric_init_filter(instrument: &str, metric: &minijinja::Value) -> String {
+    let metric_id = metric.get_attr("id").ok()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "unknown".to_string());
+    
+    match instrument {
+        "counter" => format!(r#"metrics::counter!("{}")"#, metric_id),
+        "gauge" => format!(r#"metrics::gauge!("{}")"#, metric_id),
+        "histogram" => format!(r#"metrics::histogram!("{}")"#, metric_id),
+        "updowncounter" => format!(r#"metrics::updown_counter!("{}")"#, metric_id),
+        _ => format!(r#"metrics::counter!("{}")"#, metric_id),
+    }
+}
+
+// List operation filters
+fn selectattr_filter(items: &minijinja::Value, attr: &str, value: &str) -> Vec<minijinja::Value> {
+    if let Ok(array) = items.try_iter() {
+        array
+            .filter(|item| {
+                item.get_attr(attr).ok()
+                    .and_then(|v| v.as_str().map(|s| s == value))
+                    .unwrap_or(false)
+            })
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+fn rejectattr_filter(items: &minijinja::Value, attr: &str, value: &str) -> Vec<minijinja::Value> {
+    if let Ok(array) = items.try_iter() {
+        array
+            .filter(|item| {
+                item.get_attr(attr).ok()
+                    .and_then(|v| v.as_str().map(|s| s != value))
+                    .unwrap_or(true)
+            })
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+fn map_filter(items: &minijinja::Value, attr: &str) -> Vec<String> {
+    if let Ok(array) = items.try_iter() {
+        array
+            .filter_map(|item| {
+                item.get_attr(attr).ok()
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+fn slice_filter(items: &minijinja::Value, start: usize, end: Option<usize>) -> Vec<minijinja::Value> {
+    if let Ok(array) = items.try_iter() {
+        let vec: Vec<_> = array.collect();
+        let end_idx = end.unwrap_or(vec.len()).min(vec.len());
+        vec.iter()
+            .skip(start)
+            .take(end_idx.saturating_sub(start))
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+// Semantic convention helpers
+fn is_required_filter(attr: &minijinja::Value) -> bool {
+    attr.get_attr("requirement_level").ok()
+        .and_then(|v| v.as_str().map(|s| s == "required"))
+        .unwrap_or(false)
+}
+
+fn is_recommended_filter(attr: &minijinja::Value) -> bool {
+    attr.get_attr("requirement_level").ok()
+        .and_then(|v| v.as_str().map(|s| s == "recommended"))
+        .unwrap_or(false)
+}
+
+fn has_examples_filter(attr: &minijinja::Value) -> bool {
+    attr.get_attr("examples").ok()
+        .and_then(|v| v.try_iter().ok())
+        .map(|s| s.count() > 0)
+        .unwrap_or(false)
+}
+
+// SwarmSH-specific filters
+fn swarmsh_const_filter(value: &str) -> String {
+    format!("SWARMSH_{}", value.to_uppercase().replace('.', "_"))
+}
+
+fn is_coordination_attr_filter(id: &str) -> bool {
+    id.starts_with("swarmsh.coordination")
+}
+
+fn is_ai_attr_filter(id: &str) -> bool {
+    id.contains("ai") || id.contains("ollama")
+}
+
+// Global functions
+fn now_function() -> String {
+    chrono::Utc::now().to_rfc3339()
+}
+
+fn env_function(key: &str, default: Option<&str>) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.unwrap_or("").to_string())
 }
 
 #[cfg(test)]
