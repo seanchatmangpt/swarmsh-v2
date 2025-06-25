@@ -1,0 +1,358 @@
+groups:
+  - id: swarmsh.prompts.scrum_at_scale
+    type: span
+    brief: "SwarmSH v2 Scrum at Scale prompt usage tracking"
+    note: >
+      This span tracks the usage of AI prompts in Scrum at Scale coordination patterns,
+      including prompt selection, execution time, response quality, and coordination effectiveness.
+    attributes:
+      - id: swarmsh.prompt.pattern
+        type: string
+        requirement_level: required
+        brief: "Coordination pattern type"
+        examples: ["scrum_at_scale", "roberts_rules", "realtime", "atomic"]
+        note: "The coordination pattern being executed"
+      
+      - id: swarmsh.prompt.operation
+        type: string
+        requirement_level: required
+        brief: "Specific operation within the pattern"
+        examples: ["sprint_planning", "daily_standup", "sprint_review", "retrospective"]
+        note: "The specific coordination operation being performed"
+      
+      - id: swarmsh.prompt.template_id
+        type: string
+        requirement_level: required
+        brief: "Unique identifier for the prompt template"
+        examples: ["scrum_sprint_planning_v1", "scrum_standup_v2", "scrum_retrospective_v1"]
+        note: "Version-controlled identifier for the specific prompt template used"
+      
+      - id: swarmsh.prompt.context_size
+        type: int
+        requirement_level: recommended
+        brief: "Size of context data in bytes"
+        examples: [1024, 4096, 8192]
+        note: "Amount of context data passed to the AI prompt"
+      
+      - id: swarmsh.prompt.agent_count
+        type: int
+        requirement_level: recommended
+        brief: "Number of agents involved in coordination"
+        examples: [3, 5, 10, 25]
+        note: "Count of agents participating in the coordination decision"
+      
+      - id: swarmsh.prompt.sprint_number
+        type: int
+        requirement_level: recommended
+        brief: "Current sprint number"
+        examples: [1, 5, 12, 24]
+        note: "Sprint iteration number for planning and tracking"
+      
+      - id: swarmsh.prompt.team_count
+        type: int
+        requirement_level: recommended
+        brief: "Number of teams in scaled coordination"
+        examples: [2, 4, 8, 12]
+        note: "Count of teams participating in scaled coordination"
+      
+      - id: swarmsh.prompt.velocity_planned
+        type: double
+        requirement_level: recommended
+        brief: "Planned sprint velocity"
+        examples: [25.0, 42.5, 67.8]
+        note: "Target velocity for the sprint planning"
+      
+      - id: swarmsh.prompt.velocity_actual
+        type: double
+        requirement_level: recommended
+        brief: "Actual achieved velocity"
+        examples: [23.5, 45.2, 61.9]
+        note: "Velocity actually achieved in completed sprint"
+      
+      - id: swarmsh.prompt.impediment_count
+        type: int
+        requirement_level: recommended
+        brief: "Number of active impediments"
+        examples: [0, 2, 5, 8]
+        note: "Count of impediments blocking progress"
+      
+      - id: swarmsh.prompt.backlog_size
+        type: int
+        requirement_level: recommended
+        brief: "Current backlog item count"
+        examples: [15, 32, 67, 128]
+        note: "Number of items in the product backlog"
+
+  - id: swarmsh.prompts.roberts_rules
+    type: span
+    brief: "SwarmSH v2 Roberts Rules prompt usage tracking"
+    note: >
+      This span tracks the usage of AI prompts in Roberts Rules coordination patterns,
+      including parliamentary procedure compliance, voting processes, and governance decisions.
+    attributes:
+      - id: swarmsh.prompt.motion_id
+        type: string
+        requirement_level: recommended
+        brief: "Unique identifier for the motion being processed"
+        examples: ["motion_001", "amendment_002", "point_of_order_003"]
+        note: "Identifier for tracking specific motions through the process"
+      
+      - id: swarmsh.prompt.motion_type
+        type: string
+        requirement_level: recommended
+        brief: "Type of motion being processed"
+        examples: ["main_motion", "amendment", "point_of_order", "motion_to_table"]
+        note: "Classification of the parliamentary motion"
+      
+      - id: swarmsh.prompt.quorum_required
+        type: int
+        requirement_level: recommended
+        brief: "Minimum quorum required for valid proceedings"
+        examples: [5, 10, 15, 25]
+        note: "Required minimum attendance for valid decisions"
+      
+      - id: swarmsh.prompt.quorum_present
+        type: int
+        requirement_level: recommended
+        brief: "Number of agents currently present"
+        examples: [8, 12, 18, 30]
+        note: "Actual attendance count for quorum validation"
+      
+      - id: swarmsh.prompt.voting_method
+        type: string
+        requirement_level: recommended
+        brief: "Method used for voting"
+        examples: ["voice_vote", "roll_call", "ballot", "consensus"]
+        note: "Voting mechanism employed for the decision"
+      
+      - id: swarmsh.prompt.debate_time_limit
+        type: int
+        requirement_level: recommended
+        brief: "Time limit for debate in seconds"
+        examples: [300, 600, 1200, 1800]
+        note: "Maximum time allocated for debate on the motion"
+      
+      - id: swarmsh.prompt.amendment_count
+        type: int
+        requirement_level: recommended
+        brief: "Number of amendments proposed"
+        examples: [0, 1, 3, 5]
+        note: "Count of amendments proposed to the main motion"
+      
+      - id: swarmsh.prompt.speakers_queue_length
+        type: int
+        requirement_level: recommended
+        brief: "Number of agents in speaking queue"
+        examples: [0, 2, 5, 8]
+        note: "Count of agents waiting to speak in debate"
+
+  - id: swarmsh.prompts.coordination
+    type: span
+    brief: "General SwarmSH v2 coordination prompt tracking"
+    note: >
+      This span tracks general coordination prompt usage across all patterns,
+      focusing on AI response quality, decision accuracy, and system performance.
+    attributes:
+      - id: swarmsh.prompt.ai_provider
+        type: string
+        requirement_level: required
+        brief: "AI provider used for prompt processing"
+        examples: ["ollama", "claude", "openai", "local_model"]
+        note: "The AI service or model used to process the prompt"
+      
+      - id: swarmsh.prompt.model_name
+        type: string
+        requirement_level: recommended
+        brief: "Specific AI model identifier"
+        examples: ["llama2:latest", "claude-3-sonnet", "gpt-4", "local-llm"]
+        note: "The specific AI model used for coordination decisions"
+      
+      - id: swarmsh.prompt.response_time_ms
+        type: int
+        requirement_level: required
+        brief: "AI response time in milliseconds"
+        examples: [150, 500, 1200, 3000]
+        note: "Time taken for AI to generate coordination response"
+      
+      - id: swarmsh.prompt.response_confidence
+        type: double
+        requirement_level: recommended
+        brief: "AI confidence score for the response"
+        examples: [0.85, 0.92, 0.76, 0.94]
+        note: "Confidence level reported by AI for the coordination decision"
+      
+      - id: swarmsh.prompt.response_length
+        type: int
+        requirement_level: recommended
+        brief: "Length of AI response in characters"
+        examples: [256, 512, 1024, 2048]
+        note: "Character count of the AI response"
+      
+      - id: swarmsh.prompt.coordination_decision
+        type: string
+        requirement_level: required
+        brief: "Primary coordination decision made"
+        examples: ["approve_sprint_plan", "escalate_impediment", "approve_motion", "table_discussion"]
+        note: "The main decision outcome from the coordination prompt"
+      
+      - id: swarmsh.prompt.alternatives_count
+        type: int
+        requirement_level: recommended
+        brief: "Number of alternative options provided"
+        examples: [0, 2, 3, 5]
+        note: "Count of alternative coordination options suggested by AI"
+      
+      - id: swarmsh.prompt.implementation_priority
+        type: string
+        requirement_level: recommended
+        brief: "Priority level for implementing the decision"
+        examples: ["immediate", "high", "medium", "low", "deferred"]
+        note: "Urgency classification for the coordination decision"
+      
+      - id: swarmsh.prompt.coordination_epoch
+        type: int
+        requirement_level: required
+        brief: "Nanosecond-precision coordination timestamp"
+        examples: [1699123456789012345, 1699123456789012346]
+        note: "High-precision timestamp for zero-conflict coordination tracking"
+      
+      - id: swarmsh.prompt.conflict_resolution
+        type: boolean
+        requirement_level: recommended
+        brief: "Whether prompt was used for conflict resolution"
+        examples: [true, false]
+        note: "Indicates if this prompt addressed coordination conflicts"
+      
+      - id: swarmsh.prompt.cache_hit
+        type: boolean
+        requirement_level: recommended
+        brief: "Whether prompt response was served from cache"
+        examples: [true, false]
+        note: "Indicates if cached prompt response was used for performance"
+
+# Metrics for prompt usage analytics
+  - id: swarmsh.prompts.metrics
+    type: metric_group
+    brief: "SwarmSH v2 prompt usage metrics"
+    note: >
+      Metrics tracking the effectiveness and performance of AI prompts
+      in coordination patterns, supporting 80/20 optimization principles.
+    metrics:
+      - id: swarmsh.prompts.requests.total
+        type: counter
+        brief: "Total number of prompt requests"
+        note: "Counter of all coordination prompt requests across patterns"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.operation
+          - ref: swarmsh.prompt.ai_provider
+      
+      - id: swarmsh.prompts.response_time
+        type: histogram
+        brief: "Distribution of prompt response times"
+        note: "Histogram of AI response times for coordination prompts"
+        unit: "ms"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.ai_provider
+          - ref: swarmsh.prompt.model_name
+      
+      - id: swarmsh.prompts.confidence_score
+        type: histogram
+        brief: "Distribution of AI confidence scores"
+        note: "Histogram of confidence levels for AI coordination decisions"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.operation
+      
+      - id: swarmsh.prompts.context_size
+        type: histogram
+        brief: "Distribution of prompt context sizes"
+        note: "Histogram of context data sizes passed to prompts"
+        unit: "By"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.operation
+      
+      - id: swarmsh.prompts.cache_hits.total
+        type: counter
+        brief: "Total number of prompt cache hits"
+        note: "Counter of cached prompt responses used for performance"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.ai_provider
+      
+      - id: swarmsh.prompts.errors.total
+        type: counter
+        brief: "Total number of prompt errors"
+        note: "Counter of failed prompt requests and AI errors"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.ai_provider
+          - id: swarmsh.prompt.error_type
+            type: string
+            brief: "Type of prompt error"
+            examples: ["timeout", "invalid_response", "model_unavailable", "quota_exceeded"]
+      
+      - id: swarmsh.prompts.decisions.total
+        type: counter
+        brief: "Total coordination decisions made"
+        note: "Counter of coordination decisions made via AI prompts"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.coordination_decision
+          - ref: swarmsh.prompt.implementation_priority
+      
+      - id: swarmsh.prompts.effectiveness_score
+        type: gauge
+        brief: "Current prompt effectiveness score"
+        note: "Gauge of prompt effectiveness based on decision outcomes"
+        unit: "1"
+        attributes:
+          - ref: swarmsh.prompt.pattern
+          - ref: swarmsh.prompt.operation
+          - id: swarmsh.prompt.evaluation_window
+            type: string
+            brief: "Time window for effectiveness calculation"
+            examples: ["1h", "24h", "7d", "30d"]
+
+# Events for significant prompt-related occurrences
+  - id: swarmsh.prompts.events
+    type: event
+    brief: "SwarmSH v2 prompt-related events"
+    note: >
+      Events capturing significant occurrences in prompt usage,
+      supporting audit trails and coordination analysis.
+    attributes:
+      - id: swarmsh.prompt.event_type
+        type: string
+        requirement_level: required
+        brief: "Type of prompt event"
+        examples: ["prompt_selected", "decision_made", "conflict_resolved", "escalation_triggered"]
+        note: "Classification of the prompt-related event"
+      
+      - id: swarmsh.prompt.event_severity
+        type: string
+        requirement_level: recommended
+        brief: "Severity level of the event"
+        examples: ["info", "warning", "error", "critical"]
+        note: "Impact level of the prompt event"
+      
+      - id: swarmsh.prompt.event_correlation_id
+        type: string
+        requirement_level: recommended
+        brief: "Correlation ID linking related events"
+        examples: ["coord_001_sprint_planning", "motion_002_voting"]
+        note: "Identifier for correlating related coordination events"
+      
+      - id: swarmsh.prompt.event_outcome
+        type: string
+        requirement_level: recommended
+        brief: "Outcome of the prompt event"
+        examples: ["success", "partial_success", "failure", "retry_required"]
+        note: "Result classification of the prompt event"

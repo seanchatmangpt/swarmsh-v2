@@ -1,0 +1,321 @@
+//! Generated prompt telemetry for SwarmSH v2
+//! 
+//! Auto-generated from semantic conventions for AI prompt tracking in coordination patterns.
+//! DO NOT EDIT MANUALLY - regenerate with `weaver generate --template rust`
+
+use opentelemetry::{trace::Span, KeyValue};
+use tracing::{info_span, Span as TracingSpan};
+use std::time::{Duration, Instant};
+
+{% for group in groups %}
+{% if group.id.startswith('swarmsh.prompts.') %}
+/// {{ group.brief }}
+pub struct {{ group.id | replace('swarmsh.prompts.', '') | replace('.', '_') | title }}SpanBuilder {
+    operation_name: String,
+    {% for attr in group.attributes -%}
+    {% if attr.requirement_level == 'required' -%}
+    {{ attr.id | replace('swarmsh.prompt.', '') | snake_case }}: Option<{{ attr.type | rust_type }}>,
+    {% endif -%}
+    {% endfor -%}
+    {% for attr in group.attributes -%}
+    {% if attr.requirement_level == 'recommended' -%}
+    {{ attr.id | replace('swarmsh.prompt.', '') | snake_case }}: Option<{{ attr.type | rust_type }}>,
+    {% endif -%}
+    {% endfor -%}
+}
+
+impl {{ group.id | replace('swarmsh.prompts.', '') | replace('.', '_') | title }}SpanBuilder {
+    pub fn new(operation: &str) -> Self {
+        Self {
+            operation_name: operation.to_string(),
+            {% for attr in group.attributes -%}
+            {{ attr.id | replace('swarmsh.prompt.', '') | snake_case }}: None,
+            {% endfor -%}
+        }
+    }
+
+    {% for attr in group.attributes -%}
+    /// Set {{ attr.brief }}
+    /// {{ attr.note }}
+    pub fn with_{{ attr.id | replace('swarmsh.prompt.', '') | snake_case }}(mut self, value: {{ attr.type | rust_type }}) -> Self {
+        self.{{ attr.id | replace('swarmsh.prompt.', '') | snake_case }} = Some(value);
+        self
+    }
+
+    {% endfor -%}
+    
+    /// Start the span with all configured attributes
+    pub fn start(self) -> TracingSpan {
+        let span = info_span!(
+            "{{ group.id }}",
+            operation = %self.operation_name,
+            {% for attr in group.attributes -%}
+            {% if attr.requirement_level == 'required' -%}
+            {{ attr.id | replace('swarmsh.prompt.', '') | snake_case }} = tracing::field::Empty,
+            {% endif -%}
+            {% endfor -%}
+            {% for attr in group.attributes -%}
+            {% if attr.requirement_level == 'recommended' -%}
+            {{ attr.id | replace('swarmsh.prompt.', '') | snake_case }} = tracing::field::Empty,
+            {% endif -%}
+            {% endfor -%}
+        );
+        
+        {% for attr in group.attributes -%}
+        if let Some(value) = self.{{ attr.id | replace('swarmsh.prompt.', '') | snake_case }} {
+            span.record("{{ attr.id | replace('swarmsh.prompt.', '') | snake_case }}", &tracing::field::display(&value));
+        }
+        {% endfor -%}
+        
+        span
+    }
+}
+
+{% endif %}
+{% endfor %}
+
+/// Prompt telemetry manager for coordination patterns
+pub struct PromptTelemetry {
+    start_time: Option<Instant>,
+}
+
+impl PromptTelemetry {
+    pub fn new() -> Self {
+        Self {
+            start_time: None,
+        }
+    }
+
+    /// Create Scrum at Scale prompt span
+    pub fn scrum_at_scale_span(&self, operation: &str) -> ScrumAtScaleSpanBuilder {
+        ScrumAtScaleSpanBuilder::new(operation)
+    }
+
+    /// Create Roberts Rules prompt span  
+    pub fn roberts_rules_span(&self, operation: &str) -> RobertsRulesSpanBuilder {
+        RobertsRulesSpanBuilder::new(operation)
+    }
+
+    /// Create general coordination prompt span
+    pub fn coordination_span(&self, operation: &str) -> CoordinationSpanBuilder {
+        CoordinationSpanBuilder::new(operation)
+    }
+
+    /// Record prompt execution timing
+    pub fn record_prompt_timing(&mut self, pattern: &str, operation: &str, duration: Duration) {
+        metrics::histogram!("swarmsh_prompts_response_time")
+            .with_label("pattern", pattern)
+            .with_label("operation", operation)
+            .record(duration.as_millis() as f64);
+    }
+
+    /// Record prompt decision outcome
+    pub fn record_prompt_decision(&self, pattern: &str, decision: &str, confidence: f64) {
+        metrics::counter!("swarmsh_prompts_decisions_total")
+            .with_label("pattern", pattern)
+            .with_label("decision", decision)
+            .increment(1);
+            
+        metrics::histogram!("swarmsh_prompts_confidence_score")
+            .with_label("pattern", pattern)
+            .record(confidence);
+    }
+
+    /// Record prompt cache hit
+    pub fn record_cache_hit(&self, pattern: &str, ai_provider: &str) {
+        metrics::counter!("swarmsh_prompts_cache_hits_total")
+            .with_label("pattern", pattern)
+            .with_label("ai_provider", ai_provider)
+            .increment(1);
+    }
+
+    /// Record prompt error
+    pub fn record_prompt_error(&self, pattern: &str, ai_provider: &str, error_type: &str) {
+        metrics::counter!("swarmsh_prompts_errors_total")
+            .with_label("pattern", pattern)
+            .with_label("ai_provider", ai_provider)
+            .with_label("error_type", error_type)
+            .increment(1);
+    }
+}
+
+impl Default for PromptTelemetry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Convenience functions for common prompt spans
+pub fn scrum_sprint_planning_span() -> ScrumAtScaleSpanBuilder {
+    ScrumAtScaleSpanBuilder::new("sprint_planning")
+        .with_operation("sprint_planning".to_string())
+        .with_pattern("scrum_at_scale".to_string())
+}
+
+pub fn scrum_daily_standup_span() -> ScrumAtScaleSpanBuilder {
+    ScrumAtScaleSpanBuilder::new("daily_standup")
+        .with_operation("daily_standup".to_string())
+        .with_pattern("scrum_at_scale".to_string())
+}
+
+pub fn scrum_retrospective_span() -> ScrumAtScaleSpanBuilder {
+    ScrumAtScaleSpanBuilder::new("retrospective")
+        .with_operation("retrospective".to_string())
+        .with_pattern("scrum_at_scale".to_string())
+}
+
+pub fn roberts_motion_processing_span() -> RobertsRulesSpanBuilder {
+    RobertsRulesSpanBuilder::new("motion_processing")
+        .with_operation("motion_processing".to_string())
+        .with_pattern("roberts_rules".to_string())
+}
+
+pub fn roberts_voting_procedure_span() -> RobertsRulesSpanBuilder {
+    RobertsRulesSpanBuilder::new("voting_procedure")
+        .with_operation("voting_procedure".to_string())
+        .with_pattern("roberts_rules".to_string())
+}
+
+pub fn roberts_debate_management_span() -> RobertsRulesSpanBuilder {
+    RobertsRulesSpanBuilder::new("debate_management")
+        .with_operation("debate_management".to_string())
+        .with_pattern("roberts_rules".to_string())
+}
+
+/// Prompt execution context for comprehensive tracking
+#[derive(Debug, Clone)]
+pub struct PromptExecutionContext {
+    pub pattern: String,
+    pub operation: String,
+    pub ai_provider: String,
+    pub model_name: Option<String>,
+    pub context_size: usize,
+    pub start_time: Instant,
+}
+
+impl PromptExecutionContext {
+    pub fn new(pattern: &str, operation: &str, ai_provider: &str) -> Self {
+        Self {
+            pattern: pattern.to_string(),
+            operation: operation.to_string(),
+            ai_provider: ai_provider.to_string(),
+            model_name: None,
+            context_size: 0,
+            start_time: Instant::now(),
+        }
+    }
+
+    pub fn with_model(mut self, model: &str) -> Self {
+        self.model_name = Some(model.to_string());
+        self
+    }
+
+    pub fn with_context_size(mut self, size: usize) -> Self {
+        self.context_size = size;
+        self
+    }
+
+    pub fn record_completion(&self, confidence: f64, decision: &str) {
+        let duration = self.start_time.elapsed();
+        
+        // Record timing
+        metrics::histogram!("swarmsh_prompts_response_time")
+            .with_label("pattern", &self.pattern)
+            .with_label("operation", &self.operation)
+            .with_label("ai_provider", &self.ai_provider)
+            .record(duration.as_millis() as f64);
+
+        // Record decision
+        metrics::counter!("swarmsh_prompts_decisions_total")
+            .with_label("pattern", &self.pattern)
+            .with_label("decision", decision)
+            .increment(1);
+
+        // Record confidence
+        metrics::histogram!("swarmsh_prompts_confidence_score")
+            .with_label("pattern", &self.pattern)
+            .with_label("operation", &self.operation)
+            .record(confidence);
+
+        // Record context size
+        metrics::histogram!("swarmsh_prompts_context_size")
+            .with_label("pattern", &self.pattern)
+            .with_label("operation", &self.operation)
+            .record(self.context_size as f64);
+
+        info!(
+            pattern = %self.pattern,
+            operation = %self.operation,
+            ai_provider = %self.ai_provider,
+            model_name = ?self.model_name,
+            duration_ms = duration.as_millis(),
+            confidence = confidence,
+            decision = %decision,
+            context_size = self.context_size,
+            "Prompt execution completed"
+        );
+    }
+
+    pub fn record_error(&self, error_type: &str, error_message: &str) {
+        let duration = self.start_time.elapsed();
+        
+        // Record error
+        metrics::counter!("swarmsh_prompts_errors_total")
+            .with_label("pattern", &self.pattern)
+            .with_label("ai_provider", &self.ai_provider)
+            .with_label("error_type", error_type)
+            .increment(1);
+
+        tracing::error!(
+            pattern = %self.pattern,
+            operation = %self.operation,
+            ai_provider = %self.ai_provider,
+            error_type = %error_type,
+            error_message = %error_message,
+            duration_ms = duration.as_millis(),
+            "Prompt execution failed"
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scrum_span_builder() {
+        let span = scrum_sprint_planning_span()
+            .with_sprint_number(5)
+            .with_team_count(3)
+            .with_velocity_planned(25.5)
+            .start();
+        
+        // Verify span is created
+        assert_eq!(span.metadata().unwrap().name(), "swarmsh.prompts.scrum_at_scale");
+    }
+
+    #[test]
+    fn test_roberts_span_builder() {
+        let span = roberts_motion_processing_span()
+            .with_motion_id("motion_001".to_string())
+            .with_quorum_required(10)
+            .with_quorum_present(12)
+            .start();
+        
+        // Verify span is created
+        assert_eq!(span.metadata().unwrap().name(), "swarmsh.prompts.roberts_rules");
+    }
+
+    #[test]
+    fn test_prompt_execution_context() {
+        let context = PromptExecutionContext::new("scrum_at_scale", "sprint_planning", "ollama")
+            .with_model("llama2:latest")
+            .with_context_size(1024);
+        
+        assert_eq!(context.pattern, "scrum_at_scale");
+        assert_eq!(context.operation, "sprint_planning");
+        assert_eq!(context.ai_provider, "ollama");
+        assert_eq!(context.model_name, Some("llama2:latest".to_string()));
+        assert_eq!(context.context_size, 1024);
+    }
+}

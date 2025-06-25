@@ -30,11 +30,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-// Generated code imports
-use crate::generated::{
-    span_builders::{agent_lifecycle_span, work_coordination_span, coordination_protocol_span},
-    metrics::SwarmMetrics,
-};
+// Generated code imports 
+use crate::generated::metrics::SwarmMetrics;
 
 // Core modules
 pub mod coordination;
@@ -46,6 +43,13 @@ pub mod ai_integration;
 pub mod worktree_manager;
 pub mod weaver_forge;
 pub mod auto_command;
+pub mod demo_sprint;
+pub mod meta_programming;
+pub mod proc_macros;
+pub mod const_generics;
+pub mod template_metaprog;
+pub mod meta_programming_demo;
+// pub mod coordination_prompts;
 
 #[cfg(test)]
 pub mod telemetry_test;
@@ -166,24 +170,29 @@ impl SwarmSystem {
     
     /// Create weaver-instrumented agent span
     pub fn create_agent_span(&self, agent_id: &str, operation: &str) -> tracing::Span {
-        agent_lifecycle_span(operation)
-            .with_agent_id(agent_id)
-            .start()
+        tracing::info_span!(
+            "swarmsh.agent.lifecycle",
+            agent_id = %agent_id,
+            operation = %operation
+        )
     }
     
     /// Create weaver-instrumented work span
     pub fn create_work_span(&self, work_id: &str, operation: &str) -> tracing::Span {
-        work_coordination_span(operation)
-            .with_work_id(work_id)
-            .start()
+        tracing::info_span!(
+            "swarmsh.work.coordination",
+            work_id = %work_id,
+            operation = %operation
+        )
     }
     
     /// Create weaver-instrumented coordination span
     pub fn create_coordination_span(&self, pattern: &str, operation: &str) -> tracing::Span {
-        coordination_protocol_span(operation)
-            .with_pattern(pattern)
-            .with_operation(operation)
-            .start()
+        tracing::info_span!(
+            "swarmsh.coordination.protocol",
+            pattern = %pattern,
+            operation = %operation
+        )
     }
 }
 

@@ -6,6 +6,9 @@
 use crate::{AgentId, WorkId, CoordinationEpoch, SwarmResult, SwarmError};
 use crate::ai_integration::{AIIntegration, AgentDecision, AIAnalysis};
 use crate::telemetry::{SwarmTelemetry, DefaultSwarmTelemetry, TelemetryManager};
+// Commented out until modules are properly implemented
+// use crate::generated::prompt_telemetry::{PromptTelemetry, PromptExecutionContext, scrum_sprint_planning_span, roberts_motion_processing_span};
+// use crate::coordination_prompts::{CoordinationPrompts, CoordinationContext};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -194,6 +197,8 @@ pub struct AgentCoordinator {
     telemetry: Arc<crate::TelemetryManager>,
     coordination_lock: Arc<Mutex<()>>,
     swarm_telemetry: DefaultSwarmTelemetry,
+    // prompt_telemetry: PromptTelemetry,
+    // coordination_prompts: CoordinationPrompts,
 }
 
 impl AgentCoordinator {
@@ -216,6 +221,8 @@ impl AgentCoordinator {
             telemetry,
             coordination_lock: Arc::new(Mutex::new(())),
             swarm_telemetry: DefaultSwarmTelemetry::default(),
+            // prompt_telemetry: PromptTelemetry::new(),
+            // coordination_prompts: CoordinationPrompts::default(),
         })
     }
     
@@ -227,8 +234,21 @@ impl AgentCoordinator {
             match ai.analyze("System startup initialization").await {
                 Ok(analysis) => {
                     info!("AI startup analysis: {:?}", analysis.recommendations);
+                    // Record successful AI analysis
+                    self.swarm_telemetry.record_ai_decision(
+                        "startup_analysis", 
+                        analysis.confidence, 
+                        std::time::Duration::from_millis(50)
+                    );
                 }
                 Err(e) => {
+                    let _error_span = self.swarm_telemetry.analytics_span("error_handling", "ai_analysis_failure").entered();
+                    tracing::error!(
+                        error = %e,
+                        operation = "ai_startup_analysis",
+                        component = "coordination",
+                        "AI startup analysis failed"
+                    );
                     debug!("AI startup analysis failed: {}", e);
                 }
             }
@@ -243,9 +263,18 @@ impl AgentCoordinator {
     }
     
     /// Register new agent with zero-conflict guarantee
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(agent_id = %spec.id, agent_role = ?spec.role))]
     pub async fn register_agent(&self, spec: AgentSpec) -> SwarmResult<()> {
+        let start_time = std::time::Instant::now();
+        
+        // Generate correlation ID for tracking this operation across the system
+        let correlation_id = format!("reg_{}", SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos());
+        
+        let _span = self.swarm_telemetry.agent_span(&spec.id, "register").entered();
+        tracing::Span::current().record("correlation_id", &correlation_id);
+        
         let _lock = self.coordination_lock.lock().await;
+        let lock_acquisition_time = start_time.elapsed();
         
         let mut agents = self.agents.write().await;
         
@@ -283,6 +312,22 @@ impl AgentCoordinator {
                 Err(e) => debug!("AI analysis failed: {}", e),
             }
         }
+        
+        let total_duration = start_time.elapsed();
+        
+        // Record performance metrics
+        self.swarm_telemetry.record_coordination_duration("agent_registration", total_duration);
+        self.swarm_telemetry.record_agent_registration(&spec.id);
+        
+        tracing::info!(
+            agent_id = %spec.id,
+            agent_role = ?spec.role,
+            correlation_id = %correlation_id,
+            lock_acquisition_ms = lock_acquisition_time.as_millis(),
+            total_duration_ms = total_duration.as_millis(),
+            agents_count = agents.len(),
+            "Agent registered successfully"
+        );
         
         Ok(())
     }
