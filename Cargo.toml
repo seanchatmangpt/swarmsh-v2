@@ -1,0 +1,104 @@
+[package]
+name = "swarmsh-v2"
+version = "0.1.0"
+edition = "2021"
+description = "SwarmSH v2 - Observability-First Agent Coordination with Shell Export"
+license = "MIT"
+authors = ["SwarmSH Team"]
+
+[[bin]]
+name = "swarmsh-coordinator"
+path = "src/bin/coordinator.rs"
+
+[[bin]]
+name = "swarmsh-agent"
+path = "src/bin/agent.rs"
+
+[[bin]]
+name = "swarmsh-exporter"
+path = "src/bin/shell_exporter.rs"
+
+[[bin]]
+name = "swarmsh-worktree"
+path = "src/bin/worktree_manager.rs"
+
+[dependencies]
+# OpenTelemetry Core - Comprehensive OTEL Stack
+opentelemetry = "0.23"
+opentelemetry_sdk = { version = "0.23", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.22", optional = true }
+opentelemetry-prometheus = { version = "0.16", optional = true }
+opentelemetry-otlp = { version = "0.16", optional = true }
+opentelemetry-stdout = { version = "0.4", optional = true }
+opentelemetry-semantic-conventions = "0.15"
+opentelemetry-http = "0.12"
+
+# Tracing Integration - Full OTEL Support
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter", "chrono"] }
+tracing-opentelemetry = "0.24"
+tracing-appender = "0.2"
+
+# Metrics and Monitoring
+metrics = "0.21"
+metrics-exporter-prometheus = { version = "0.12", optional = true }
+metrics-util = "0.15"
+
+# Async Runtime
+tokio = { version = "1.0", features = ["full"] }
+tokio-stream = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# File Operations
+fs_extra = "1.3"
+file-lock = "2.1"
+
+# HTTP Client for AI Integration
+reqwest = { version = "0.11", features = ["json"], optional = true }
+
+# CLI Framework (CLIAPI Principles)
+clap = { version = "4.0", features = ["derive"] }
+
+# Shell Export with Tera templating
+tera = { version = "1.19", optional = true }
+which = { version = "4.4", optional = true }
+
+# AI Integration
+ollama-rs = { version = "0.3.1", optional = true }
+async-stream = "0.3"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# DLSS Analytics
+# statistical-analysis = "0.2"  # Will add custom analytics implementation
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+minijinja = "2.10.2"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.0"
+tokio-test = "0.4"
+tokio-stream = "0.1"
+futures = "0.3"
+tempfile = "3.0"
+tracing-test = "0.2"
+
+[[bench]]
+name = "worktree_benchmarks"
+harness = false
+
+[features]
+default = ["jaeger", "prometheus", "otlp", "stdout", "shell-export", "ai-integration"]
+jaeger = ["opentelemetry-jaeger"]
+prometheus = ["opentelemetry-prometheus", "metrics-exporter-prometheus"]
+otlp = ["opentelemetry-otlp"]
+stdout = ["opentelemetry-stdout"]
+shell-export = ["tera", "which"]
+ai-integration = ["reqwest", "ollama-rs"]
+full-telemetry = ["jaeger", "prometheus", "otlp", "stdout"]

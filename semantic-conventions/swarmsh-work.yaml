@@ -1,0 +1,262 @@
+groups:
+  - id: swarmsh.work
+    prefix: swarmsh.work
+    type: span
+    brief: "Work item coordination and execution operations"
+    note: >
+      This semantic convention defines the observability contract for work
+      distribution, claiming, execution, and completion in the SwarmSH system.
+      Implements pull-based work distribution with atomic claiming guarantees.
+    attributes:
+      - id: work.id
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Unique work item identifier with nanosecond precision"
+        note: >
+          Generated using nanosecond timestamps to ensure uniqueness across
+          distributed work creation. Format: work_{nanoseconds}
+        examples:
+          - "work_1719123456789012345"
+          - "work_1719123456789012346"
+          
+      - id: work.type
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Classification of work item type"
+        note: >
+          Categorizes work for routing to appropriately specialized agents.
+          Used in pull-based work claiming and capacity planning.
+        examples:
+          - "feature"
+          - "bug"
+          - "optimization"
+          - "analysis"
+          - "coordination"
+          - "monitoring"
+          
+      - id: work.priority
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Work item priority level for scheduling"
+        note: >
+          Determines work processing order and resource allocation.
+          Critical work preempts lower priority items.
+        examples:
+          - "critical"
+          - "high" 
+          - "medium"
+          - "low"
+          
+      - id: work.estimated_duration_ms
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Estimated execution duration in milliseconds"
+        note: >
+          Used for capacity planning and agent work allocation.
+          Enables intelligent scheduling and resource management.
+        examples:
+          - 30000    # 30 seconds
+          - 120000   # 2 minutes
+          - 3600000  # 1 hour
+          
+      - id: work.claim_timestamp_ns
+        requirement_level: required
+        stability: stable
+        type: int
+        brief: "Nanosecond timestamp when work was claimed"
+        note: >
+          Atomic claiming timestamp used for conflict resolution and
+          work timeout detection. Must be nanosecond precision.
+        examples:
+          - 1719123456789012345
+          
+      - id: work.claimed_by
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Agent ID that claimed this work item"
+        note: >
+          Set when work transitions from pending to in_progress state.
+          Required for in_progress and completed work items.
+        examples:
+          - "agent_1719123456789012345"
+          
+      - id: work.progress_percentage
+        requirement_level: optional
+        stability: stable
+        type: int
+        brief: "Work completion progress as percentage (0-100)"
+        note: >
+          Enables progress tracking and completion estimation.
+          Used for coordination dashboards and analytics.
+        examples:
+          - 25
+          - 50
+          - 75
+          - 100
+          
+      - id: work.created_at
+        requirement_level: required
+        stability: stable
+        type: int
+        brief: "Unix timestamp when work was created in nanoseconds"
+        note: >
+          Work creation timestamp for age tracking and SLA monitoring.
+          Used in work queue analytics and performance measurement.
+        examples:
+          - 1719123456789012000
+          
+      - id: work.completed_at
+        requirement_level: conditional
+        stability: stable
+        type: int
+        brief: "Unix timestamp when work was completed in nanoseconds"
+        note: >
+          Set when work transitions to completed state. Required for
+          completed work items. Used for duration and performance analytics.
+        examples:
+          - 1719123456789112000
+          
+      - id: work.status
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Current work item status"
+        note: >
+          Tracks work item state through its lifecycle. Status transitions
+          generate telemetry events for coordination and monitoring.
+        examples:
+          - "pending"
+          - "claimed"
+          - "in_progress"
+          - "completed"
+          - "failed"
+          - "cancelled"
+          
+      - id: work.result
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Work execution result or outcome"
+        note: >
+          Set when work completes (successfully or with failure).
+          Provides outcome information for analytics and reporting.
+        examples:
+          - "success"
+          - "failed"
+          - "timeout"
+          - "cancelled"
+          
+      - id: work.description
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Human-readable description of the work"
+        note: >
+          Provides context for work content and requirements.
+          Used in dashboards and work queue visualization.
+        examples:
+          - "Implement user authentication caching"
+          - "Fix memory leak in coordination module"
+          - "Optimize telemetry data processing"
+          
+      - id: work.specification
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "YAML specification for machine-first work definition"
+        note: >
+          CLIAPI-style YAML specification defining exact work requirements.
+          Enables machine-first work processing and validation.
+        examples:
+          - "feature_spec.yaml"
+          - "bug_reproduction.yaml"
+          - "optimization_target.yaml"
+          
+      - id: work.tags
+        requirement_level: optional
+        stability: experimental
+        type: string[]
+        brief: "Categorization tags for work organization"
+        note: >
+          Enables flexible work categorization and filtering.
+          Used for analytics and specialized work routing.
+        examples:
+          - ["backend", "performance"]
+          - ["frontend", "ui", "accessibility"]
+          - ["database", "optimization"]
+
+operations:
+  - id: swarmsh.work.create
+    brief: "Creation of new work item in the system"
+    note: >
+      Atomic work creation with nanosecond-precision ID generation.
+      Work enters 'pending' state and becomes available for claiming.
+      
+  - id: swarmsh.work.claim
+    brief: "Atomic work claiming by an agent"
+    note: >
+      Pull-based work claiming with conflict detection. Only one agent
+      can successfully claim any work item. Uses file locking for atomicity.
+      
+  - id: swarmsh.work.progress
+    brief: "Work progress update from executing agent"
+    note: >
+      Progress updates enable monitoring and coordination visibility.
+      Used for health monitoring and completion estimation.
+      
+  - id: swarmsh.work.complete
+    brief: "Work completion with result reporting"
+    note: >
+      Final work state transition with outcome reporting. Enables
+      performance analytics and coordination optimization.
+      
+  - id: swarmsh.work.timeout
+    brief: "Work timeout due to agent failure or deadlock"
+    note: >
+      Automatic work recovery when agents fail to complete within
+      expected timeframes. Returns work to pending state.
+
+examples:
+  - name: Work Creation
+    brief: "New work item added to coordination system"
+    attributes:
+      swarmsh.work.id: "work_1719123456789012345"
+      swarmsh.work.type: "feature"
+      swarmsh.work.priority: "high"
+      swarmsh.work.estimated_duration_ms: 120000
+      swarmsh.work.status: "pending"
+      swarmsh.work.created_at: 1719123456789012345
+      swarmsh.work.description: "Implement caching layer for user sessions"
+      swarmsh.work.specification: "session_cache.yaml"
+      swarmsh.work.tags: ["backend", "performance", "caching"]
+      
+  - name: Work Claiming
+    brief: "Agent claims available work item"
+    attributes:
+      swarmsh.work.id: "work_1719123456789012345"
+      swarmsh.work.claimed_by: "agent_1719123456789012400"
+      swarmsh.work.claim_timestamp_ns: 1719123456789012500
+      swarmsh.work.status: "claimed"
+      
+  - name: Work Progress Update
+    brief: "Agent reports work progress"
+    attributes:
+      swarmsh.work.id: "work_1719123456789012345"
+      swarmsh.work.claimed_by: "agent_1719123456789012400"
+      swarmsh.work.status: "in_progress"
+      swarmsh.work.progress_percentage: 45
+      
+  - name: Work Completion
+    brief: "Successful work completion"
+    attributes:
+      swarmsh.work.id: "work_1719123456789012345"
+      swarmsh.work.claimed_by: "agent_1719123456789012400"
+      swarmsh.work.status: "completed"
+      swarmsh.work.result: "success"
+      swarmsh.work.completed_at: 1719123456789112345
+      swarmsh.work.progress_percentage: 100

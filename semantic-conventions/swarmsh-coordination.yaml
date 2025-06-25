@@ -1,0 +1,315 @@
+groups:
+  - id: swarmsh.coordination
+    prefix: swarmsh.coordination
+    type: span
+    brief: "Coordination protocol operations and conflict resolution"
+    note: >
+      This semantic convention defines the observability contract for
+      coordination mechanisms, conflict detection, and distributed
+      synchronization in the SwarmSH system. Implements Scrum at Scale
+      coordination patterns with Roberts Rules of Order governance.
+    attributes:
+      - id: coordination.pattern
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Coordination pattern being executed"
+        note: >
+          Identifies which coordination algorithm is being used for
+          this operation. Focuses on Scrum at Scale and Roberts Rules
+          rather than enterprise SAFe patterns.
+        examples:
+          - "scrum_at_scale"   # Primary coordination pattern
+          - "roberts_rules"    # Governance and decision making
+          - "realtime"         # Real-time agent coordination
+          - "atomic"           # Atomic file-based coordination
+          
+      - id: coordination.operation
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Type of coordination operation being performed"
+        note: >
+          Categorizes the coordination operation for analytics and
+          performance monitoring. Used to track operation patterns.
+        examples:
+          - "claim"       # Work claiming operation
+          - "progress"    # Progress update
+          - "complete"    # Work completion
+          - "register"    # Agent registration
+          - "heartbeat"   # Health check
+          - "synchronize" # Cross-agent synchronization
+          - "vote"        # Roberts Rules voting
+          - "motion"      # Roberts Rules motion
+          
+      - id: coordination.epoch
+        requirement_level: required
+        stability: stable
+        type: int
+        brief: "Coordination epoch for ordering and conflict resolution"
+        note: >
+          Monotonically increasing epoch number used for operation
+          ordering and conflict detection. Critical for distributed
+          coordination correctness.
+        examples:
+          - 1719123456
+          - 1719123457
+          
+      - id: coordination.atomic_operation
+        requirement_level: required
+        stability: stable
+        type: boolean
+        brief: "Whether this operation requires atomicity guarantees"
+        note: >
+          Indicates if the operation must be atomic across the distributed
+          system. Atomic operations use file locking and other mechanisms
+          to ensure consistency.
+        examples:
+          - true   # Work claiming, agent registration, voting
+          - false  # Progress updates, heartbeats
+          
+      - id: coordination.conflict_detected
+        requirement_level: optional
+        stability: stable
+        type: boolean
+        brief: "Whether a coordination conflict was detected"
+        note: >
+          Set to true when the coordination system detects a conflict
+          between agents. Used for conflict analytics and system tuning.
+        examples:
+          - false  # Normal case with zero conflicts
+          - true   # Rare conflict detected
+          
+      - id: coordination.roberts_rules_action
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Roberts Rules governance action being performed"
+        note: >
+          When using Roberts Rules coordination pattern, specifies
+          the specific parliamentary procedure being executed.
+        examples:
+          - "motion_made"
+          - "motion_seconded"
+          - "vote_called"
+          - "vote_counted"
+          - "decision_recorded"
+          - "quorum_verified"
+          
+      - id: coordination.scrum_context
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Scrum at Scale context for coordination"
+        note: >
+          When using Scrum at Scale pattern, identifies which
+          Scrum ceremony or framework element is active.
+        examples:
+          - "daily_scrum"
+          - "sprint_planning"
+          - "retrospective"
+          - "backlog_refinement"
+          - "scrum_of_scrums"
+          - "meta_scrum"
+          
+      - id: coordination.lock_acquired
+        requirement_level: conditional
+        stability: stable
+        type: boolean
+        brief: "Whether coordination lock was successfully acquired"
+        note: >
+          For atomic operations, indicates successful lock acquisition.
+          Required for atomic operations. Used for performance monitoring.
+        examples:
+          - true   # Lock acquired successfully
+          - false  # Lock acquisition failed
+          
+      - id: coordination.lock_duration_ms
+        requirement_level: optional
+        stability: stable
+        type: int
+        brief: "Duration lock was held in milliseconds"
+        note: >
+          Measures lock contention and coordination efficiency.
+          Used for performance optimization and bottleneck detection.
+        examples:
+          - 5    # Very fast operation
+          - 25   # Normal operation
+          - 100  # Slow operation indicating contention
+          
+      - id: coordination.participants
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Number of agents participating in coordination"
+        note: >
+          Count of agents involved in this coordination operation.
+          Used for scaling analysis and coordination complexity measurement.
+        examples:
+          - 1   # Single agent operation
+          - 5   # Multi-agent coordination
+          - 10  # Large coordination group
+          
+      - id: coordination.retry_count
+        requirement_level: optional
+        stability: stable
+        type: int
+        brief: "Number of retry attempts for this operation"
+        note: >
+          Tracks retry attempts due to conflicts or failures.
+          Used for coordination reliability analysis.
+        examples:
+          - 0  # Success on first attempt
+          - 1  # One retry required
+          - 3  # Multiple retries
+          
+      - id: coordination.success
+        requirement_level: required
+        stability: stable
+        type: boolean
+        brief: "Whether coordination operation succeeded"
+        note: >
+          Final outcome of the coordination operation. Used for
+          success rate monitoring and system health assessment.
+        examples:
+          - true   # Operation succeeded
+          - false  # Operation failed
+          
+      - id: coordination.error_type
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Type of coordination error encountered"
+        note: >
+          Set when coordination.success is false. Categorizes
+          failure modes for debugging and system improvement.
+        examples:
+          - "lock_timeout"
+          - "conflict_detected"
+          - "agent_failure"
+          - "network_error"
+          - "invalid_state"
+          - "quorum_not_met"
+          - "motion_failed"
+          
+      - id: coordination.coordination_id
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Unique identifier for this coordination session"
+        note: >
+          Links related coordination operations together.
+          Used for distributed tracing and coordination analysis.
+        examples:
+          - "coord_1719123456789012345"
+          
+      - id: coordination.agent_count
+        requirement_level: optional
+        stability: experimental
+        type: int
+        brief: "Total number of active agents in system"
+        note: >
+          Snapshot of system scale during coordination.
+          Used for scaling analysis and capacity planning.
+        examples:
+          - 5
+          - 25
+          - 100
+
+operations:
+  - id: swarmsh.coordination.acquire_lock
+    brief: "Acquire coordination lock for atomic operation"
+    note: >
+      Attempts to acquire distributed coordination lock using file
+      locking mechanisms. Critical for maintaining zero-conflict guarantees.
+      
+  - id: swarmsh.coordination.release_lock
+    brief: "Release coordination lock after operation completion"
+    note: >
+      Releases coordination lock to allow other agents to proceed.
+      Must be called even if operation fails to prevent deadlocks.
+      
+  - id: swarmsh.coordination.synchronize
+    brief: "Cross-agent synchronization operation"
+    note: >
+      Coordinates state synchronization between multiple agents.
+      Used for consistency maintenance in distributed operations.
+      
+  - id: swarmsh.coordination.conflict_resolution
+    brief: "Resolve coordination conflict between agents"
+    note: >
+      Handles conflicts when multiple agents attempt conflicting
+      operations. Uses epoch-based ordering for deterministic resolution.
+      
+  - id: swarmsh.coordination.epoch_advance
+    brief: "Advance coordination epoch for new round"
+    note: >
+      Increments coordination epoch to begin new coordination round.
+      Ensures proper ordering of operations across distributed system.
+      
+  - id: swarmsh.coordination.roberts_rules_motion
+    brief: "Execute Roberts Rules parliamentary procedure"
+    note: >
+      Implements Roberts Rules governance for agent decision making.
+      Provides structured decision processes with voting and consensus.
+      
+  - id: swarmsh.coordination.scrum_ceremony
+    brief: "Facilitate Scrum at Scale ceremony"
+    note: >
+      Coordinates Scrum at Scale ceremonies and framework activities.
+      Enables structured agile coordination patterns.
+
+examples:
+  - name: Atomic Work Claiming
+    brief: "Agent claims work with atomic coordination"
+    attributes:
+      swarmsh.coordination.pattern: "atomic"
+      swarmsh.coordination.operation: "claim"
+      swarmsh.coordination.epoch: 1719123456
+      swarmsh.coordination.atomic_operation: true
+      swarmsh.coordination.conflict_detected: false
+      swarmsh.coordination.lock_acquired: true
+      swarmsh.coordination.lock_duration_ms: 12
+      swarmsh.coordination.participants: 1
+      swarmsh.coordination.retry_count: 0
+      swarmsh.coordination.success: true
+      swarmsh.coordination.coordination_id: "coord_1719123456789012345"
+      
+  - name: Scrum at Scale Coordination
+    brief: "Multi-agent Scrum coordination operation"
+    attributes:
+      swarmsh.coordination.pattern: "scrum_at_scale"
+      swarmsh.coordination.operation: "synchronize"
+      swarmsh.coordination.epoch: 1719123456
+      swarmsh.coordination.atomic_operation: false
+      swarmsh.coordination.scrum_context: "daily_scrum"
+      swarmsh.coordination.participants: 5
+      swarmsh.coordination.success: true
+      swarmsh.coordination.coordination_id: "coord_1719123456789012346"
+      swarmsh.coordination.agent_count: 12
+      
+  - name: Roberts Rules Decision Making
+    brief: "Governance decision using Roberts Rules"
+    attributes:
+      swarmsh.coordination.pattern: "roberts_rules"
+      swarmsh.coordination.operation: "vote"
+      swarmsh.coordination.epoch: 1719123456
+      swarmsh.coordination.atomic_operation: true
+      swarmsh.coordination.roberts_rules_action: "vote_called"
+      swarmsh.coordination.participants: 7
+      swarmsh.coordination.success: true
+      swarmsh.coordination.coordination_id: "coord_1719123456789012347"
+      
+  - name: Coordination Conflict Detection
+    brief: "Conflict detected and resolved during coordination"
+    attributes:
+      swarmsh.coordination.pattern: "realtime"
+      swarmsh.coordination.operation: "claim"
+      swarmsh.coordination.epoch: 1719123456
+      swarmsh.coordination.atomic_operation: true
+      swarmsh.coordination.conflict_detected: true
+      swarmsh.coordination.lock_acquired: false
+      swarmsh.coordination.retry_count: 1
+      swarmsh.coordination.success: false
+      swarmsh.coordination.error_type: "conflict_detected"
+      swarmsh.coordination.coordination_id: "coord_1719123456789012348"

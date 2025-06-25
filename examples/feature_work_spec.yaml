@@ -1,0 +1,154 @@
+# SwarmSH v2 Example Work Specification
+# Machine-first CLI design with YAML specification (CLIAPI principles)
+
+# Work item metadata
+id: work_feature_auth_cache_1719123456789012345
+type: feature
+priority: high
+estimated_duration_ms: 3600000  # 1 hour
+
+# Human-readable description
+title: "Implement User Authentication Caching"
+description: |
+  Create a caching layer for user authentication sessions to improve
+  performance by 40% and reduce database load. This aligns with our
+  80/20 optimization principles - high impact feature with focused effort.
+
+# Machine-first specification (CLIAPI methodology)
+specification:
+  component: authentication
+  requirements:
+    - cache_provider: redis
+    - cache_ttl: 3600  # 1 hour
+    - performance_target: "40% improvement"
+    - fallback_strategy: database_lookup
+  
+  acceptance_criteria:
+    - performance_test_passes: true
+    - cache_hit_ratio: ">= 0.85"
+    - database_load_reduction: ">= 0.30"
+    - security_review_approved: true
+  
+  implementation_hints:
+    - use_existing_redis_cluster: true
+    - implement_cache_warming: true
+    - add_metrics_instrumentation: true
+    - follow_zero_conflict_patterns: true
+
+# Coordination metadata
+coordination:
+  pattern: scrum_at_scale
+  sprint: "Sprint_2025_Q2_Week_25"
+  epic: "Authentication Performance Optimization"
+  story_points: 8
+
+# Agent assignment preferences
+agent_preferences:
+  required_specializations: ["authentication", "caching", "performance"]
+  preferred_roles: ["senior_developer", "performance_engineer"]
+  minimum_capacity: 0.7
+  concurrent_work_limit: 1
+
+# Quality and monitoring
+monitoring:
+  telemetry_level: detailed
+  health_checks: enabled
+  performance_tracking: enabled
+  analytics_tier: tier1  # 80/20 high-value work
+
+# Dependencies
+dependencies:
+  - work_id: "work_redis_cluster_setup_1719123456789012340"
+    relationship: "blocks"
+  - work_id: "work_auth_service_refactor_1719123456789012341"
+    relationship: "related"
+
+# Output specifications (CLIAPI machine-first)
+outputs:
+  primary:
+    type: code
+    format: rust
+    location: "src/auth/cache.rs"
+    
+  documentation:
+    type: markdown
+    format: technical_spec
+    location: "docs/auth_cache_design.md"
+    
+  tests:
+    type: code
+    format: rust
+    location: "tests/auth_cache_tests.rs"
+    coverage_target: 0.95
+    
+  metrics:
+    type: telemetry
+    format: otel_spans
+    namespace: "swarmsh.work.auth_cache"
+
+# DLSS optimization metadata
+dlss:
+  value_stream_stage: implementation
+  waste_elimination_opportunities:
+    - reduce_auth_latency
+    - eliminate_redundant_db_calls
+    - optimize_session_validation
+  
+  flow_efficiency_target: 0.85
+  lead_time_target_ms: 3600000  # Complete within 1 hour
+  quality_target: zero_defects
+
+# Roberts Rules governance (if voting required)
+governance:
+  requires_vote: false  # Implementation decision, not architectural
+  decision_type: technical_implementation
+  stakeholders: ["auth_team", "performance_team"]
+
+# AI integration hints
+ai_analysis:
+  claude_context: |
+    This work item implements authentication caching as part of our
+    observability-first architecture. The caching layer should integrate
+    with our OTEL telemetry for complete visibility into performance gains.
+  
+  optimization_focus:
+    - performance_improvement
+    - cache_efficiency
+    - observability_integration
+  
+  success_metrics:
+    - response_time_improvement: "40%"
+    - cache_hit_ratio: "85%+"
+    - database_load_reduction: "30%+"
+
+# Metadata for shell export
+shell_export:
+  export_compatible: true
+  shell_script_generation: enabled
+  unix_native_operations: true
+  file_based_coordination: required
+
+# Tags for organization and filtering
+tags:
+  - backend
+  - performance
+  - authentication
+  - caching
+  - tier1
+  - high_impact
+  - 8020_optimization
+
+# Version and audit trail
+version: 1.0
+created_at: "2025-06-25T10:30:45.789012345Z"
+created_by: "swarmsh-coordinator"
+last_modified: "2025-06-25T10:30:45.789012345Z"
+modification_history: []
+
+# CLIAPI compatibility
+cliapi:
+  machine_readable: true
+  json_output_available: true
+  human_flag_supported: true
+  specification_driven: true
+  infinite_loop_compatible: true

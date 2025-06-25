@@ -1,0 +1,99 @@
+groups:
+  - id: swarmsh.infinite_loop
+    prefix: swarmsh.infinite_loop
+    type: span
+    brief: "Infinite agentic loop coordination and execution"
+    note: >
+      This semantic convention defines the observability contract for infinite
+      agentic loops including specification-driven generation, wave coordination,
+      and quality validation with mathematical precision timing.
+    attributes:
+      - id: loop_id
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Unique identifier for the infinite loop instance"
+        note: >
+          Generated using nanosecond-precision timestamps to mathematically
+          guarantee uniqueness across distributed loop executions.
+        examples: ["loop_001", "ui_generation_v3", "spec_evolution_1"]
+        
+      - id: specification_path
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Path to the specification file driving the loop"
+        note: "Specification file that defines loop behavior and output requirements"
+        examples: ["specs/invent_new_ui_v3.md", "specs/agent_design.yaml"]
+        
+      - id: output_directory
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Target directory for generated output"
+        note: "Directory where loop iterations generate output files"
+        examples: ["src", "infinite_src_new", "generated_agents"]
+        
+      - id: iteration_count
+        type: int
+        requirement_level: required
+        stability: stable
+        brief: "Current iteration number in the loop"
+        note: "Monotonically increasing iteration counter for tracking progress"
+        examples: [1, 5, 20]
+        
+      - id: loop_mode
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Execution mode of the infinite loop"
+        note: "Defines the execution pattern and termination conditions"
+        examples: ["single", "batch", "infinite", "wave"]
+
+  - id: swarmsh.infinite_loop.quality
+    prefix: swarmsh.infinite_loop.quality
+    type: span
+    brief: "Quality assurance and validation metrics for infinite loops"
+    note: >
+      Quality control mechanisms for infinite loop outputs including validation
+      methods, acceptance criteria, and quality scoring.
+    attributes:
+      - id: quality_score
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Overall quality score for iteration output (0.0-1.0)"
+        note: "Normalized quality score used for acceptance decisions"
+        examples: [0.7, 0.85, 0.92]
+        
+      - id: validation_method
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Method used for quality validation"
+        note: "Validation technique applied to assess output quality"
+        examples: ["static_analysis", "test_execution", "peer_review", "ai_evaluation"]
+
+  - id: swarmsh.infinite_loop.coordination
+    prefix: swarmsh.infinite_loop.coordination
+    type: span
+    brief: "Coordination mechanisms for infinite loop execution"
+    note: >
+      Zero-conflict coordination patterns for distributed infinite loop execution
+      with mathematical precision timing guarantees.
+    attributes:
+      - id: coordination_strategy
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Strategy used for coordinating loop execution"
+        note: "Primary coordination mechanism for zero-conflict execution"
+        examples: ["file_based", "memory_shared", "message_passing"]
+        
+      - id: conflict_resolution
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Method for resolving coordination conflicts"
+        note: "Conflict resolution technique ensuring zero-conflict guarantees"
+        examples: ["advisory_locking", "timestamp_ordering", "priority_based"]

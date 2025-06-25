@@ -1,0 +1,18 @@
+semconv_version: 1.26.0
+schema_base_url: https://swarmsh.dev/schemas
+name: SwarmSH v2 Semantic Conventions
+version: 1.0.0
+description: Semantic conventions for SwarmSH v2 agent coordination system
+groups:
+  - id: swarmsh
+    brief: SwarmSH v2 semantic conventions
+    type: span
+    paths:
+      - swarmsh-agent.yaml
+      - swarmsh-work.yaml
+      - swarmsh-coordination.yaml
+      - swarmsh-health.yaml
+      - swarmsh-analytics.yaml
+      - swarmsh-infinite-loop.yaml
+      - swarmsh-worktree.yaml
+      - swarmsh-auto-8020.yaml

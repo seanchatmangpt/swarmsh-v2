@@ -1,0 +1,431 @@
+groups:
+  - id: swarmsh.agent
+    prefix: swarmsh.agent
+    type: span
+    brief: "Agent lifecycle and management operations in SwarmSH coordination system"
+    note: >
+      This semantic convention defines the observability contract for autonomous
+      agent operations including registration, coordination, and lifecycle management.
+      All operations use nanosecond-precision identifiers for mathematical 
+      zero-conflict guarantees.
+    attributes:
+      - id: agent.id
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Unique nanosecond-precision agent identifier"
+        note: >
+          Generated using SystemTime::now() nanosecond precision to mathematically
+          guarantee uniqueness across distributed systems. Format: agent_{nanoseconds}
+        examples: 
+          - "agent_1719123456789012345"
+          - "agent_1719123456789012346"
+          
+      - id: agent.role
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Agent specialization role in the coordination system"
+        note: >
+          Defines the agent's capability and responsibility within the swarm.
+          Supports multiple agent framework patterns including OpenAI Swarm,
+          Enterprise Swarms, and Agency Swarm role-based specialization.
+        examples:
+          - "coordinator"     # Central orchestration agent
+          - "triage"         # Request routing and delegation
+          - "specialist"     # Domain-specific processing
+          - "worker"         # Task execution
+          - "analyzer"       # Data analysis and processing
+          - "optimizer"      # Performance optimization
+          - "monitor"        # Health and status monitoring
+          - "ceo"           # High-level decision making (Agency Swarm pattern)
+          - "developer"     # Code generation and modification
+          - "assistant"     # General support and coordination
+          
+      - id: agent.capacity
+        requirement_level: recommended
+        stability: stable
+        type: double
+        brief: "Agent processing capacity as a ratio (0.0-1.0)"
+        note: >
+          Represents the agent's available processing capacity for work assignment.
+          Used in load balancing and work distribution decisions.
+        examples:
+          - 0.75
+          - 0.90
+          - 1.0
+          
+      - id: agent.coordination_epoch
+        requirement_level: required
+        stability: stable
+        type: int
+        brief: "Coordination epoch for conflict resolution and ordering"
+        note: >
+          Monotonically increasing epoch number used for coordination ordering
+          and conflict resolution. Incremented on each coordination round.
+        examples:
+          - 1719123456
+          - 1719123457
+          
+      - id: agent.status
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Current operational status of the agent"
+        note: >
+          Tracks the agent's current state for coordination and health monitoring.
+          Status changes generate telemetry events for system observability.
+        examples:
+          - "active"
+          - "idle"
+          - "offline"
+          - "error"
+          - "coordinating"
+          
+      - id: agent.last_heartbeat
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Unix timestamp of last agent heartbeat in nanoseconds"
+        note: >
+          Used for agent health monitoring and failure detection.
+          Agents must send heartbeats at regular intervals.
+        examples:
+          - 1719123456789012345
+          
+      - id: agent.work_capacity
+        requirement_level: optional
+        stability: experimental  
+        type: int
+        brief: "Maximum number of concurrent work items agent can handle"
+        note: >
+          Defines the agent's concurrency limit for work assignment.
+          Used in work distribution algorithms.
+        examples:
+          - 1
+          - 5
+          - 10
+          
+      - id: agent.specializations
+        requirement_level: optional
+        stability: experimental
+        type: string[]
+        brief: "List of work types this agent can handle"
+        note: >
+          Comma-separated list of work types the agent is capable of executing.
+          Used for intelligent work routing.
+        examples:
+          - ["feature", "bug"]
+          - ["optimization", "analysis"]
+          - ["coordination", "monitoring"]
+
+      # Agent Framework Integration Attributes
+      - id: agent.framework_pattern
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Agent framework pattern being implemented"
+        note: >
+          Identifies which agent framework pattern this agent follows.
+          Supports integration of multiple agent orchestration approaches.
+        examples:
+          - "openai_swarm"      # OpenAI Swarm routines + handoffs
+          - "enterprise_swarm"  # Production-ready hierarchical
+          - "agency_swarm"      # Role-based specialization
+          - "custom"           # SwarmSH v2 custom patterns
+
+      - id: agent.handoff.source
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Source agent identifier for handoff operations"
+        note: >
+          Identifies the agent initiating a handoff. Used for context
+          preservation and handoff chain tracking.
+        examples:
+          - "agent_1719123456789012345"
+          - "triage_agent_001"
+
+      - id: agent.handoff.target
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Target agent identifier for handoff operations"
+        note: >
+          Identifies the agent receiving a handoff. Enables handoff
+          routing and target agent activation.
+        examples:
+          - "agent_1719123456789012346"
+          - "specialist_agent_002"
+
+      - id: agent.handoff.context_id
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Unique identifier for handoff context preservation"
+        note: >
+          Nanosecond-precision identifier for handoff context data.
+          Ensures atomic context transfer during agent handoffs.
+        examples:
+          - "handoff_1719123456789012345"
+          - "handoff_1719123456789012346"
+
+      - id: agent.handoff.reason
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Reason for agent handoff"
+        note: >
+          Describes why the handoff occurred for analysis and optimization.
+        examples:
+          - "specialization_required"
+          - "capacity_exceeded"
+          - "routine_completed"
+          - "error_recovery"
+
+      - id: agent.routine.name
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Name of routine being executed by agent"
+        note: >
+          Identifies the specific routine or workflow being executed.
+          Supports OpenAI Swarm routine patterns.
+        examples:
+          - "triage_workflow"
+          - "specialized_processing"
+          - "handoff_coordination"
+          - "error_handling"
+
+      - id: agent.routine.step
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Current step number in routine execution"
+        note: >
+          Tracks progress through multi-step routines for monitoring
+          and error recovery.
+        examples:
+          - 1
+          - 5
+          - 10
+
+      - id: agent.routine.step_name
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Name of current routine step"
+        note: >
+          Human-readable name for the current step in routine execution.
+        examples:
+          - "validate_input"
+          - "process_data"
+          - "prepare_handoff"
+
+      - id: agent.tool.name
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Name of tool being executed by agent"
+        note: >
+          Identifies the specific tool being invoked. Supports type-safe
+          tool integration patterns from agent frameworks.
+        examples:
+          - "file_processor"
+          - "data_analyzer"
+          - "coordination_helper"
+
+      - id: agent.tool.validation_status
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Tool validation status before execution"
+        note: >
+          Indicates whether tool inputs passed validation checks.
+          Supports Agency Swarm type-safe tool patterns.
+        examples:
+          - "valid"
+          - "invalid"
+          - "error"
+          - "warning"
+
+      - id: agent.tool.execution_result
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Result status of tool execution"
+        note: >
+          Indicates the outcome of tool execution for monitoring.
+        examples:
+          - "success"
+          - "failure"
+          - "timeout"
+          - "partial"
+
+      - id: agent.communication.message_type
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Type of inter-agent communication message"
+        note: >
+          Categorizes messages between agents for communication patterns.
+        examples:
+          - "handoff_request"
+          - "status_update"
+          - "error_notification"
+          - "coordination_signal"
+
+      - id: agent.hierarchy.level
+        requirement_level: optional
+        stability: experimental
+        type: int
+        brief: "Agent level in hierarchical coordination structure"
+        note: >
+          Supports Enterprise Swarms hierarchical patterns.
+          Higher numbers indicate higher levels in hierarchy.
+        examples:
+          - 0  # Worker level
+          - 1  # Supervisor level
+          - 2  # Manager level
+          - 3  # Executive level
+
+operations:
+  - id: swarmsh.agent.register
+    brief: "Agent registration in the coordination system"
+    note: >
+      Registers a new agent with the coordination system. This is an atomic
+      operation that prevents duplicate registrations and ensures consistency.
+    
+  - id: swarmsh.agent.heartbeat
+    brief: "Agent health heartbeat signal"
+    note: >
+      Periodic health signal sent by agents to indicate operational status.
+      Used for failure detection and coordination health monitoring.
+      
+  - id: swarmsh.agent.coordinate  
+    brief: "Agent coordination protocol operation"
+    note: >
+      Participates in coordination rounds for work distribution and system
+      synchronization. Uses epoch-based ordering for conflict resolution.
+      
+  - id: swarmsh.agent.deregister
+    brief: "Agent removal from coordination system"
+    note: >
+      Cleanly removes an agent from the coordination system, ensuring
+      any in-progress work is properly handled.
+
+  # Agent Framework Operations
+  - id: swarmsh.agent.handoff.initiate
+    brief: "Initiate handoff to another agent"
+    note: >
+      Starts the process of handing off control to another agent.
+      Preserves context atomically and signals the target agent.
+      Implements OpenAI Swarm handoff patterns.
+
+  - id: swarmsh.agent.handoff.receive
+    brief: "Receive handoff from another agent"
+    note: >
+      Accepts control handoff from source agent with context preservation.
+      Activates target agent with complete state transfer.
+
+  - id: swarmsh.agent.handoff.complete
+    brief: "Complete handoff operation"
+    note: >
+      Finalizes handoff with confirmation from both agents.
+      Ensures zero-conflict context transfer.
+
+  - id: swarmsh.agent.routine.start
+    brief: "Begin execution of named routine"
+    note: >
+      Starts execution of a predefined routine or workflow.
+      Supports OpenAI Swarm routine patterns with step tracking.
+
+  - id: swarmsh.agent.routine.step
+    brief: "Execute individual routine step"
+    note: >
+      Executes a single step within a routine workflow.
+      Includes condition evaluation and handoff decision points.
+
+  - id: swarmsh.agent.routine.complete
+    brief: "Complete routine execution"
+    note: >
+      Marks successful completion of routine workflow.
+      Triggers any post-completion handoffs or notifications.
+
+  - id: swarmsh.agent.tool.invoke
+    brief: "Invoke tool with validation"
+    note: >
+      Executes a tool with type-safe validation and error handling.
+      Implements Agency Swarm tool patterns with automatic validation.
+
+  - id: swarmsh.agent.tool.validate
+    brief: "Validate tool inputs before execution"
+    note: >
+      Performs type checking and validation of tool parameters.
+      Prevents invalid tool execution and provides error feedback.
+
+  - id: swarmsh.agent.communicate
+    brief: "Send message to another agent"
+    note: >
+      Inter-agent communication for coordination and status updates.
+      Supports specialized messaging protocols for different agent types.
+
+examples:
+  - name: Agent Registration
+    brief: "New agent joining the coordination system"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012345"
+      swarmsh.agent.role: "worker"
+      swarmsh.agent.capacity: 0.85
+      swarmsh.agent.coordination_epoch: 1719123456
+      swarmsh.agent.status: "active"
+      swarmsh.agent.work_capacity: 3
+      swarmsh.agent.specializations: ["feature", "bug"]
+      
+  - name: Agent Heartbeat
+    brief: "Regular health check from active agent"  
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012345"
+      swarmsh.agent.status: "active"
+      swarmsh.agent.last_heartbeat: 1719123456789012500
+
+  # Agent Framework Examples
+  - name: Agent Handoff with Context Preservation
+    brief: "Triage agent handing off to specialist with complete context"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012345"
+      swarmsh.agent.role: "triage"
+      swarmsh.agent.framework_pattern: "openai_swarm"
+      swarmsh.agent.handoff.source: "agent_1719123456789012345"
+      swarmsh.agent.handoff.target: "agent_1719123456789012346"
+      swarmsh.agent.handoff.context_id: "handoff_1719123456789012347"
+      swarmsh.agent.handoff.reason: "specialization_required"
+      swarmsh.agent.routine.name: "triage_workflow"
+      swarmsh.agent.routine.step: 3
+      swarmsh.agent.routine.step_name: "prepare_handoff"
+
+  - name: Routine Execution with Tool Integration
+    brief: "Specialist agent executing routine with type-safe tools"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012346"
+      swarmsh.agent.role: "specialist"
+      swarmsh.agent.framework_pattern: "agency_swarm"
+      swarmsh.agent.routine.name: "specialized_processing"
+      swarmsh.agent.routine.step: 2
+      swarmsh.agent.routine.step_name: "process_data"
+      swarmsh.agent.tool.name: "data_analyzer"
+      swarmsh.agent.tool.validation_status: "valid"
+      swarmsh.agent.tool.execution_result: "success"
+
+  - name: Hierarchical Agent Coordination
+    brief: "Enterprise swarm pattern with hierarchical coordination"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012347"
+      swarmsh.agent.role: "coordinator"
+      swarmsh.agent.framework_pattern: "enterprise_swarm"
+      swarmsh.agent.hierarchy.level: 2
+      swarmsh.agent.communication.message_type: "coordination_signal"
+      swarmsh.agent.routine.name: "hierarchy_coordination"
+      swarmsh.agent.routine.step: 1
+      swarmsh.agent.routine.step_name: "distribute_work"
+      swarmsh.agent.capacity: 0.75

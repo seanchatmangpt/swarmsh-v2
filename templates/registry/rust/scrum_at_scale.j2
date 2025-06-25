@@ -1,0 +1,204 @@
+{#- Scrum at Scale Coordination Template for SwarmSH v2 -#}
+{#- Generates Rust code for Scrum at Scale coordination patterns -#}
+//! Scrum at Scale Coordination Implementation
+//! 
+//! Generated from semantic conventions by OTEL Weaver
+//! Implements Scrum at Scale patterns for agent coordination
+
+use crate::coordination::{CoordinationPattern, AgentRole};
+use crate::generated::attributes::*;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::{info, span, Level};
+
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.scrum") %}
+/// {{ group.brief | default("Scrum at Scale coordination pattern") }}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct {{ group.id.split(".")[-1] | pascal_case }}Pattern {
+    /// Unique pattern identifier with nanosecond precision
+    pub pattern_id: String,
+    
+    /// Sprint duration in seconds
+    pub sprint_duration: Duration,
+    
+    /// Team size limits
+    pub min_team_size: usize,
+    pub max_team_size: usize,
+    
+    /// Scaling parameters
+    pub scrum_of_scrums_threshold: usize,
+    pub executive_action_team_size: usize,
+}
+
+impl {{ group.id.split(".")[-1] | pascal_case }}Pattern {
+    /// Create new Scrum at Scale pattern instance
+    pub fn new() -> Self {
+        let pattern_id = format!("scrum_{}", SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos());
+            
+        Self {
+            pattern_id,
+            sprint_duration: Duration::from_secs({{ params.scrum_sprint_duration | default(604800) }}), // 1 week default
+            min_team_size: {{ params.scrum_min_team_size | default(3) }},
+            max_team_size: {{ params.scrum_max_team_size | default(9) }},
+            scrum_of_scrums_threshold: {{ params.scrum_scaling_threshold | default(5) }},
+            executive_action_team_size: {{ params.scrum_eat_size | default(5) }},
+        }
+    }
+    
+    /// Execute sprint planning
+    pub fn sprint_planning(&self, agents: Vec<String>) -> Result<SprintPlan> {
+        let span = span!(Level::INFO, "scrum_sprint_planning",
+            pattern_id = %self.pattern_id,
+            agent_count = %agents.len()
+        );
+        let _enter = span.enter();
+        
+        info!("Starting sprint planning for {} agents", agents.len());
+        
+        // Divide agents into scrum teams
+        let teams = self.form_scrum_teams(agents)?;
+        
+        // Create sprint backlog
+        let backlog = self.create_sprint_backlog(&teams)?;
+        
+        Ok(SprintPlan {
+            sprint_id: format!("sprint_{}", SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()),
+            teams,
+            backlog,
+            duration: self.sprint_duration,
+        })
+    }
+    
+    /// Form scrum teams respecting size limits
+    fn form_scrum_teams(&self, agents: Vec<String>) -> Result<Vec<ScrumTeam>> {
+        let mut teams = Vec::new();
+        let mut current_agents = agents;
+        
+        while !current_agents.is_empty() {
+            let team_size = std::cmp::min(self.max_team_size, current_agents.len());
+            let team_agents: Vec<_> = current_agents.drain(..team_size).collect();
+            
+            teams.push(ScrumTeam {
+                team_id: format!("team_{}", teams.len()),
+                members: team_agents,
+                scrum_master: None, // Will be elected
+                product_owner: None, // Will be assigned
+            });
+        }
+        
+        // Form Scrum of Scrums if needed
+        if teams.len() >= self.scrum_of_scrums_threshold {
+            info!("Forming Scrum of Scrums for {} teams", teams.len());
+            // Implementation for scaled coordination
+        }
+        
+        Ok(teams)
+    }
+    
+    /// Create sprint backlog
+    fn create_sprint_backlog(&self, teams: &[ScrumTeam]) -> Result<SprintBacklog> {
+        Ok(SprintBacklog {
+            items: Vec::new(), // Populated from work queue
+            total_story_points: 0,
+            team_allocations: std::collections::HashMap::new(),
+        })
+    }
+}
+
+/// Scrum Team structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScrumTeam {
+    pub team_id: String,
+    pub members: Vec<String>,
+    pub scrum_master: Option<String>,
+    pub product_owner: Option<String>,
+}
+
+/// Sprint Plan
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SprintPlan {
+    pub sprint_id: String,
+    pub teams: Vec<ScrumTeam>,
+    pub backlog: SprintBacklog,
+    pub duration: Duration,
+}
+
+/// Sprint Backlog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SprintBacklog {
+    pub items: Vec<BacklogItem>,
+    pub total_story_points: u32,
+    pub team_allocations: std::collections::HashMap<String, Vec<String>>,
+}
+
+/// Backlog Item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BacklogItem {
+    pub item_id: String,
+    pub description: String,
+    pub story_points: u32,
+    pub priority: u8,
+}
+
+impl CoordinationPattern for {{ group.id.split(".")[-1] | pascal_case }}Pattern {
+    fn pattern_type(&self) -> &str {
+        "scrum_at_scale"
+    }
+    
+    fn coordinate(&self, agents: Vec<String>) -> Result<()> {
+        let sprint_plan = self.sprint_planning(agents)?;
+        
+        // Execute sprint
+        info!("Executing sprint {} with {} teams", 
+            sprint_plan.sprint_id, 
+            sprint_plan.teams.len()
+        );
+        
+        Ok(())
+    }
+}
+
+{% if group.attributes %}
+/// Scrum at Scale specific attributes
+pub mod attributes {
+    {% for attr in group.attributes %}
+    /// {{ attr.brief | default("") }}
+    pub const {{ attr.id.split(".")[-1] | screaming_snake_case }}: &str = "{{ attr.id }}";
+    {% endfor %}
+}
+{% endif %}
+
+{% endfor %}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_scrum_pattern_creation() {
+        let pattern = ScrumPattern::new();
+        assert!(pattern.pattern_id.starts_with("scrum_"));
+        assert_eq!(pattern.min_team_size, 3);
+        assert_eq!(pattern.max_team_size, 9);
+    }
+    
+    #[test]
+    fn test_team_formation() {
+        let pattern = ScrumPattern::new();
+        let agents: Vec<String> = (0..20).map(|i| format!("agent_{}", i)).collect();
+        
+        let result = pattern.sprint_planning(agents);
+        assert!(result.is_ok());
+        
+        let plan = result.unwrap();
+        assert!(plan.teams.len() >= 2);
+        assert!(plan.teams.iter().all(|t| t.members.len() <= 9));
+    }
+}

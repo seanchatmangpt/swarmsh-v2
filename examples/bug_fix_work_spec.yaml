@@ -1,0 +1,208 @@
+# SwarmSH v2 Bug Fix Work Specification
+# Roberts Rules governance example for critical system issues
+
+# Work item metadata
+id: work_bug_memory_leak_1719123456789012346
+type: bug
+priority: critical
+estimated_duration_ms: 7200000  # 2 hours
+
+# Human-readable description
+title: "Fix Memory Leak in Coordination Module"
+description: |
+  Critical memory leak detected in the coordination module causing
+  system degradation after 6+ hours of operation. This requires
+  immediate attention and may need Roberts Rules governance for
+  deployment decisions.
+
+# Machine-first specification
+specification:
+  component: coordination
+  bug_category: memory_leak
+  severity: critical
+  
+  symptoms:
+    - memory_usage_increase: "exponential"
+    - system_degradation: "after_6_hours"
+    - affected_operations: ["agent_registration", "work_claiming"]
+    - performance_impact: "system_wide"
+  
+  root_cause_analysis:
+    suspected_location: "src/coordination.rs"
+    suspected_functions: ["register_agent", "cleanup_expired_agents"]
+    memory_pattern: "unreleased_agent_registry_entries"
+    
+  fix_requirements:
+    - implement_proper_cleanup: true
+    - add_memory_monitoring: true
+    - ensure_zero_conflicts: true
+    - maintain_nanosecond_precision: true
+
+# Roberts Rules governance (required for critical fixes)
+governance:
+  requires_vote: true
+  decision_type: critical_system_fix
+  voting_threshold: simple_majority
+  
+  motion: |
+    Motion to approve emergency deployment of memory leak fix
+    in coordination module with immediate production rollout.
+  
+  stakeholders:
+    - tech_lead
+    - operations_team
+    - security_team
+    - product_owner
+  
+  meeting_context: emergency_session
+  quorum_required: 3
+  
+  discussion_points:
+    - deployment_risk_assessment
+    - rollback_procedures
+    - monitoring_requirements
+    - user_impact_analysis
+
+# Coordination metadata (Real-time pattern for urgency)
+coordination:
+  pattern: realtime  # Urgent fix requires real-time coordination
+  escalation_level: critical
+  on_call_notification: true
+  
+# Agent assignment (specialized requirements)
+agent_preferences:
+  required_specializations: ["memory_management", "coordination", "debugging"]
+  required_experience_level: "senior"
+  minimum_capacity: 0.9  # High capacity required for critical work
+  concurrent_work_limit: 1  # Focus exclusively on this issue
+  
+  preferred_agents:
+    - role: "system_architect" 
+    - role: "senior_developer"
+    - role: "performance_engineer"
+
+# Quality and monitoring (Enhanced for critical issue)
+monitoring:
+  telemetry_level: verbose
+  health_checks: continuous
+  performance_tracking: real_time
+  analytics_tier: tier1
+  
+  memory_monitoring:
+    enabled: true
+    sampling_interval_ms: 1000
+    alert_threshold_mb: 100
+    
+  conflict_monitoring:
+    zero_conflict_validation: true
+    nanosecond_precision_check: true
+
+# Dependencies and blockers
+dependencies:
+  - work_id: "work_system_backup_1719123456789012347"
+    relationship: "prerequisite"
+    status: "completed"
+
+blockers:
+  - type: "testing_environment_access"
+    status: "resolved"
+  - type: "production_deployment_window"
+    status: "pending_approval"
+
+# Output specifications
+outputs:
+  primary:
+    type: code
+    format: rust
+    location: "src/coordination.rs"
+    
+  hotfix_patch:
+    type: patch
+    format: git_patch
+    location: "hotfixes/coordination_memory_fix.patch"
+    
+  memory_tests:
+    type: code
+    format: rust
+    location: "tests/memory_leak_regression_tests.rs"
+    
+  postmortem:
+    type: markdown
+    format: incident_report
+    location: "docs/incidents/coordination_memory_leak_postmortem.md"
+
+# DLSS optimization for incident response
+dlss:
+  value_stream_stage: incident_response
+  
+  waste_elimination:
+    - eliminate_debugging_delays
+    - reduce_deployment_friction
+    - optimize_fix_validation
+    
+  flow_efficiency_target: 0.95  # High efficiency for critical fixes
+  lead_time_target_ms: 7200000  # Fix within 2 hours
+  
+  quality_gates:
+    - memory_leak_eliminated: true
+    - zero_conflicts_maintained: true
+    - performance_regression_check: passed
+    - security_review: expedited_approval
+
+# AI integration for rapid analysis
+ai_analysis:
+  claude_context: |
+    Critical memory leak in coordination module requiring immediate fix.
+    Analyze code patterns for memory management issues and suggest
+    optimal fix approach that maintains zero-conflict guarantees.
+  
+  analysis_priority: critical
+  suggested_approach: "automated_memory_analysis"
+  
+  optimization_focus:
+    - rapid_root_cause_identification
+    - minimal_risk_fix_implementation
+    - comprehensive_testing_strategy
+
+# Emergency procedures
+emergency_procedures:
+  deployment_window: immediate
+  rollback_plan: automated
+  monitoring_escalation: real_time
+  
+  communication_plan:
+    - notify_stakeholders: immediate
+    - status_updates: every_30_minutes
+    - completion_notification: all_teams
+
+# Shell export considerations
+shell_export:
+  export_compatible: true
+  emergency_deployment: true
+  unix_native_validation: required
+  atomic_operations_verified: true
+
+# Tags
+tags:
+  - critical
+  - memory_leak
+  - coordination
+  - emergency
+  - roberts_rules
+  - hotfix
+  - production_impact
+
+# Audit trail
+version: 1.0
+created_at: "2025-06-25T14:15:30.789012346Z"
+created_by: "automated_monitoring_system"
+escalated_by: "tech_lead"
+priority_escalation: "system_health_alert"
+
+# Incident tracking
+incident:
+  id: "INC-2025-0625-001"
+  severity: "SEV1"
+  detection_time: "2025-06-25T14:10:00.000000000Z"
+  response_time_target_minutes: 15
+  resolution_time_target_minutes: 120

@@ -1,0 +1,233 @@
+groups:
+  - id: swarmsh.auto
+    prefix: swarmsh.auto
+    type: span
+    brief: "Automated 80/20 feature detection and implementation"
+    note: >
+      This semantic convention defines the observability contract for automated
+      feature detection using DLSS (Decisive Lean Six Sigma) analytics to identify
+      and implement the 20% of features that deliver 80% of value.
+    attributes:
+      - id: project_path
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Path to the project being analyzed"
+        note: "Root directory of the codebase for 80/20 analysis"
+        examples: ["/path/to/project", "./src", "/Users/dev/myapp"]
+        
+      - id: analysis_id
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Unique identifier for the analysis session"
+        note: "Generated using nanosecond precision for tracking"
+        examples: ["auto_1719123456789012345", "analysis_v1_2024"]
+        
+      - id: features_detected
+        type: int
+        requirement_level: required
+        stability: stable
+        brief: "Total number of potential features detected"
+        note: "Count of all features identified during analysis"
+        examples: [42, 156, 1024]
+        
+      - id: features_selected
+        type: int
+        requirement_level: required
+        stability: stable
+        brief: "Number of features selected for implementation (20%)"
+        note: "Features that meet the 80/20 value threshold"
+        examples: [8, 31, 205]
+        
+      - id: value_score_threshold
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Minimum value score for feature selection (0.0-1.0)"
+        note: "Threshold for identifying high-value features"
+        examples: [0.8, 0.85, 0.9]
+
+  - id: swarmsh.auto.feature
+    prefix: swarmsh.auto.feature
+    type: span
+    brief: "Individual feature analysis and implementation"
+    note: >
+      Tracks individual feature detection, scoring, and implementation
+      within the automated 80/20 workflow.
+    attributes:
+      - id: feature_id
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Unique identifier for the detected feature"
+        note: "Generated ID for tracking feature lifecycle"
+        examples: ["feat_auth_oauth2", "feat_cache_redis", "feat_api_graphql"]
+        
+      - id: feature_name
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Human-readable name of the feature"
+        note: "Descriptive name for the detected feature"
+        examples: ["OAuth2 Authentication", "Redis Cache Layer", "GraphQL API"]
+        
+      - id: impact_score
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Calculated impact score (0.0-1.0)"
+        note: "Users affected × usage frequency normalized"
+        examples: [0.95, 0.87, 0.73]
+        
+      - id: complexity_score
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Implementation complexity score (0.0-1.0)"
+        note: "Based on AST analysis and dependency graph"
+        examples: [0.2, 0.5, 0.8]
+        
+      - id: value_ratio
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Value delivery ratio (impact/complexity)"
+        note: "Higher ratios indicate better 80/20 candidates"
+        examples: [4.75, 1.74, 0.91]
+        
+      - id: implementation_status
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Current status of feature implementation"
+        note: "Tracks progress through implementation lifecycle"
+        examples: ["detected", "analyzing", "implementing", "validating", "completed", "failed"]
+
+  - id: swarmsh.auto.dlss
+    prefix: swarmsh.auto.dlss
+    type: span
+    brief: "DLSS (Decisive Lean Six Sigma) analytics"
+    note: >
+      Value stream mapping and waste elimination metrics for
+      automated feature implementation decisions.
+    attributes:
+      - id: waste_type
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Type of waste identified (7 wastes)"
+        note: "DLSS waste categories for elimination"
+        examples: ["overproduction", "waiting", "transport", "overprocessing", "inventory", "motion", "defects"]
+        
+      - id: flow_efficiency
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Current flow efficiency percentage"
+        note: "Value-add time / total lead time"
+        examples: [0.15, 0.42, 0.84]
+        
+      - id: bottleneck_identified
+        type: string
+        requirement_level: optional
+        stability: stable
+        brief: "Primary bottleneck constraining value delivery"
+        note: "Identified constraint in the value stream"
+        examples: ["database_queries", "api_latency", "build_time", "test_coverage"]
+        
+      - id: sigma_level
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Current Six Sigma quality level"
+        note: "Defects per million opportunities (DPMO) converted to sigma"
+        examples: [3.4, 4.2, 5.1]
+
+  - id: swarmsh.auto.wave
+    prefix: swarmsh.auto.wave
+    type: span
+    brief: "Wave-based parallel feature implementation"
+    note: >
+      Coordinates parallel implementation of multiple features using
+      zero-conflict mathematical coordination patterns.
+    attributes:
+      - id: wave_id
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Unique identifier for implementation wave"
+        note: "Tracks coordinated parallel execution"
+        examples: ["wave_auto_001", "implementation_wave_42"]
+        
+      - id: parallelism_factor
+        type: int
+        requirement_level: required
+        stability: stable
+        brief: "Number of features implemented in parallel"
+        note: "Concurrent feature implementation count"
+        examples: [4, 8, 16]
+        
+      - id: coordination_method
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Zero-conflict coordination method used"
+        note: "Mathematical coordination pattern"
+        examples: ["nanosecond_ordering", "advisory_locking", "atomic_files"]
+        
+      - id: wave_completion_rate
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Percentage of wave features completed successfully"
+        note: "Success rate for parallel implementation"
+        examples: [1.0, 0.875, 0.95]
+
+  - id: swarmsh.auto.validation
+    prefix: swarmsh.auto.validation
+    type: span
+    brief: "Automated validation and quality gates"
+    note: >
+      Quality validation metrics for automatically implemented features
+      including test results, benchmarks, and rollback decisions.
+    attributes:
+      - id: validation_type
+        type: string
+        requirement_level: required
+        stability: stable
+        brief: "Type of validation performed"
+        note: "Validation method applied to implementation"
+        examples: ["unit_tests", "integration_tests", "benchmarks", "static_analysis", "user_acceptance"]
+        
+      - id: quality_gate_passed
+        type: boolean
+        requirement_level: required
+        stability: stable
+        brief: "Whether the quality gate was passed"
+        note: "Binary pass/fail for quality threshold"
+        examples: [true, false]
+        
+      - id: defect_density
+        type: double
+        requirement_level: required
+        stability: stable
+        brief: "Defects per thousand lines of code"
+        note: "Measured defect density for implemented feature"
+        examples: [0.1, 0.5, 2.3]
+        
+      - id: performance_impact
+        type: double
+        requirement_level: optional
+        stability: stable
+        brief: "Performance impact ratio (negative is improvement)"
+        note: "Relative performance change from baseline"
+        examples: [-0.15, 0.02, 0.08]
+        
+      - id: rollback_triggered
+        type: boolean
+        requirement_level: required
+        stability: stable
+        brief: "Whether automatic rollback was triggered"
+        note: "Indicates quality gate failure requiring rollback"
+        examples: [true, false]

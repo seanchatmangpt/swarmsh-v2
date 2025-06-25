@@ -1,0 +1,282 @@
+{#- Roberts Rules of Order Template for SwarmSH v2 -#}
+{#- Generates Rust code for Roberts Rules governance patterns -#}
+//! Roberts Rules of Order Implementation
+//! 
+//! Generated from semantic conventions by OTEL Weaver
+//! Implements Roberts Rules for agent governance and decision making
+
+use crate::coordination::{CoordinationPattern, GovernanceRule};
+use crate::generated::attributes::*;
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::{info, warn, span, Level};
+
+{% for group in ctx.groups if group.id.startswith("swarmsh.coordination.roberts") %}
+/// {{ group.brief | default("Roberts Rules governance pattern") }}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct {{ group.id.split(".")[-1] | pascal_case }}Governance {
+    /// Unique governance session ID with nanosecond precision
+    pub session_id: String,
+    
+    /// Quorum requirements
+    pub quorum_percentage: f32,
+    pub minimum_members: usize,
+    
+    /// Motion handling
+    pub motion_queue: VecDeque<Motion>,
+    pub active_motion: Option<Motion>,
+    
+    /// Voting configuration
+    pub voting_duration: Duration,
+    pub require_seconding: bool,
+    
+    /// Parliamentary procedures
+    pub allow_amendments: bool,
+    pub debate_time_limit: Duration,
+}
+
+impl {{ group.id.split(".")[-1] | pascal_case }}Governance {
+    /// Create new Roberts Rules governance instance
+    pub fn new() -> Self {
+        let session_id = format!("roberts_{}", SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos());
+            
+        Self {
+            session_id,
+            quorum_percentage: {{ params.roberts_quorum_percentage | default(0.51) }},
+            minimum_members: {{ params.roberts_minimum_members | default(3) }},
+            motion_queue: VecDeque::new(),
+            active_motion: None,
+            voting_duration: Duration::from_secs({{ params.roberts_voting_duration | default(300) }}), // 5 min default
+            require_seconding: {{ params.roberts_require_seconding | default("true") }},
+            allow_amendments: {{ params.roberts_allow_amendments | default("true") }},
+            debate_time_limit: Duration::from_secs({{ params.roberts_debate_limit | default(600) }}), // 10 min default
+        }
+    }
+    
+    /// Call meeting to order
+    pub fn call_to_order(&mut self, chair: &str, members: Vec<String>) -> Result<Meeting> {
+        let span = span!(Level::INFO, "roberts_call_to_order",
+            session_id = %self.session_id,
+            chair = %chair,
+            member_count = %members.len()
+        );
+        let _enter = span.enter();
+        
+        // Check quorum
+        if !self.has_quorum(members.len()) {
+            warn!("Insufficient quorum: {} members present", members.len());
+            return Err(anyhow::anyhow!("Quorum not met"));
+        }
+        
+        info!("Meeting called to order by {} with {} members", chair, members.len());
+        
+        Ok(Meeting {
+            meeting_id: format!("meeting_{}", SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()),
+            chair: chair.to_string(),
+            secretary: None,
+            members,
+            start_time: SystemTime::now(),
+            minutes: Vec::new(),
+        })
+    }
+    
+    /// Submit a motion
+    pub fn submit_motion(&mut self, motion: Motion) -> Result<()> {
+        let span = span!(Level::INFO, "roberts_submit_motion",
+            motion_id = %motion.motion_id,
+            motion_type = %motion.motion_type
+        );
+        let _enter = span.enter();
+        
+        // Validate motion
+        self.validate_motion(&motion)?;
+        
+        // Add to queue or make active
+        if self.active_motion.is_none() {
+            info!("Making motion {} active", motion.motion_id);
+            self.active_motion = Some(motion);
+        } else {
+            info!("Queuing motion {}", motion.motion_id);
+            self.motion_queue.push_back(motion);
+        }
+        
+        Ok(())
+    }
+    
+    /// Second a motion
+    pub fn second_motion(&mut self, motion_id: &str, seconder: &str) -> Result<()> {
+        let span = span!(Level::INFO, "roberts_second_motion",
+            motion_id = %motion_id,
+            seconder = %seconder
+        );
+        let _enter = span.enter();
+        
+        if let Some(ref mut motion) = self.active_motion {
+            if motion.motion_id == motion_id {
+                if motion.proposer == seconder {
+                    return Err(anyhow::anyhow!("Proposer cannot second their own motion"));
+                }
+                motion.seconder = Some(seconder.to_string());
+                info!("Motion {} seconded by {}", motion_id, seconder);
+                return Ok(());
+            }
+        }
+        
+        Err(anyhow::anyhow!("Motion not found or not active"))
+    }
+    
+    /// Call for vote
+    pub fn call_vote(&mut self) -> Result<VotingSession> {
+        let span = span!(Level::INFO, "roberts_call_vote");
+        let _enter = span.enter();
+        
+        let motion = self.active_motion.as_ref()
+            .context("No active motion to vote on")?;
+            
+        if self.require_seconding && motion.seconder.is_none() {
+            return Err(anyhow::anyhow!("Motion requires seconding before vote"));
+        }
+        
+        Ok(VotingSession {
+            session_id: format!("vote_{}", SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()),
+            motion_id: motion.motion_id.clone(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now() + self.voting_duration,
+            votes: HashMap::new(),
+        })
+    }
+    
+    /// Check if quorum is met
+    fn has_quorum(&self, member_count: usize) -> bool {
+        member_count >= self.minimum_members
+    }
+    
+    /// Validate motion
+    fn validate_motion(&self, motion: &Motion) -> Result<()> {
+        // Check motion type is valid
+        match motion.motion_type.as_str() {
+            "main" | "subsidiary" | "privileged" | "incidental" => Ok(()),
+            _ => Err(anyhow::anyhow!("Invalid motion type")),
+        }
+    }
+}
+
+/// Motion structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Motion {
+    pub motion_id: String,
+    pub motion_type: String,
+    pub description: String,
+    pub proposer: String,
+    pub seconder: Option<String>,
+    pub submitted_at: SystemTime,
+}
+
+/// Meeting structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Meeting {
+    pub meeting_id: String,
+    pub chair: String,
+    pub secretary: Option<String>,
+    pub members: Vec<String>,
+    pub start_time: SystemTime,
+    pub minutes: Vec<MinuteEntry>,
+}
+
+/// Voting session
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VotingSession {
+    pub session_id: String,
+    pub motion_id: String,
+    pub start_time: SystemTime,
+    pub end_time: SystemTime,
+    pub votes: HashMap<String, Vote>,
+}
+
+/// Individual vote
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Vote {
+    Aye,
+    Nay,
+    Abstain,
+}
+
+/// Minute entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinuteEntry {
+    pub timestamp: SystemTime,
+    pub entry_type: String,
+    pub description: String,
+}
+
+impl GovernanceRule for {{ group.id.split(".")[-1] | pascal_case }}Governance {
+    fn rule_type(&self) -> &str {
+        "roberts_rules"
+    }
+    
+    fn make_decision(&self, proposal: &str, voters: Vec<String>) -> Result<bool> {
+        // Simplified decision making
+        info!("Making decision on: {}", proposal);
+        Ok(true) // Would implement full voting logic
+    }
+}
+
+{% if group.attributes %}
+/// Roberts Rules specific attributes
+pub mod attributes {
+    {% for attr in group.attributes %}
+    /// {{ attr.brief | default("") }}
+    pub const {{ attr.id.split(".")[-1] | screaming_snake_case }}: &str = "{{ attr.id }}";
+    {% endfor %}
+}
+{% endif %}
+
+{% endfor %}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_roberts_rules_creation() {
+        let governance = RobertsGovernance::new();
+        assert!(governance.session_id.starts_with("roberts_"));
+        assert!(governance.require_seconding);
+    }
+    
+    #[test]
+    fn test_quorum_check() {
+        let governance = RobertsGovernance::new();
+        assert!(!governance.has_quorum(2)); // Below minimum
+        assert!(governance.has_quorum(3)); // Meets minimum
+    }
+    
+    #[test]
+    fn test_motion_submission() {
+        let mut governance = RobertsGovernance::new();
+        
+        let motion = Motion {
+            motion_id: "motion_1".to_string(),
+            motion_type: "main".to_string(),
+            description: "Test motion".to_string(),
+            proposer: "agent_1".to_string(),
+            seconder: None,
+            submitted_at: SystemTime::now(),
+        };
+        
+        let result = governance.submit_motion(motion);
+        assert!(result.is_ok());
+        assert!(governance.active_motion.is_some());
+    }
+}

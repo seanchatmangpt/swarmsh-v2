@@ -1,0 +1,294 @@
+# SwarmSH v2 .gitignore
+# Comprehensive ignore patterns for Rust, Shell, and OTEL Weaver development
+
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Keep Cargo.lock for reproducible builds
+# /Cargo.lock
+
+# Shell export directory (keep for now as it has generated files)
+# /shell-export/
+/export/
+/dist/
+
+# OTEL Weaver generated files (can be regenerated)
+# Note: We track src/generated/ in git as it's part of the 73% auto-generated code
+# but ignore intermediate generation artifacts
+/weaver-output/
+/weaver-temp/
+/.weaver-cache/
+
+# Telemetry data and traces
+/telemetry/
+/traces/
+/metrics/
+/logs/
+*.otlp
+*.jaeger
+*.prometheus
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vim/
+.nvim/
+
+# Development environment
+.env
+.env.local
+.env.*.local
+*.env
+!example.env
+
+# Claude Code specific
+.claude/
+.claude-code/
+*.claude-session
+*.claude-context
+
+# Test artifacts
+/test-results/
+/test-output/
+/coverage/
+*.profraw
+*.profdata
+/criterion/
+/benchmarks/
+tarpaulin-report.html
+cobertura.xml
+
+# Agent coordination workspace
+/workspace/
+/work-items/
+/agent-data/
+/coordination-state/
+*.lock
+!Cargo.lock
+
+# Analytics and reports
+/analytics-output/
+/dlss-reports/
+/value-stream-maps/
+*.report
+*.analysis
+
+# AI integration files
+/ollama-models/
+/claude-cache/
+*.gguf
+*.ggml
+/model-cache/
+
+# Documentation build artifacts
+/docs/_build/
+/docs/.doctrees/
+*.pdf
+/site/
+
+# Backup files
+*.backup
+*.bak
+*.old
+/backups/
+
+# Log files
+*.log
+/logs/
+*.log.*
+
+# OS-specific files
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Python (for any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+
+# Node.js (if using any JS tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+
+# Temporary SwarmSH files
+/swarmsh-temp/
+/coordination-temp/
+*.swarmsh-lock
+*.agent-state
+*.work-state
+
+# Benchmark results
+/benches/target/
+/perf.data
+/perf.data.old
+/flamegraph.svg
+
+# Security - never commit secrets
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+/secrets/
+/credentials/
+.secrets
+.credentials
+
+# Build artifacts from make
+/build/
+/release/
+/debug/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Package files
+*.deb
+*.rpm
+*.dmg
+*.pkg
+*.msi
+*.tar.gz
+*.zip
+*.7z
+
+# Claude Code automation artifacts
+/auto-features/
+/auto-analysis/
+/80-20-reports/
+*.auto-generated
+/wave-results/
+
+# Worktree management
+/.worktrees/
+/worktree-*/
+*.worktree-state
+
+# OTEL Collector config (may contain endpoints)
+otel-collector-config.yaml
+otel-collector-config.yml
+!otel-collector-config.example.yaml
+
+# Infinite loop artifacts
+/loop-outputs/
+/loop-state/
+*.loop-checkpoint
+/convergence-data/
+
+# Development databases
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# Core dumps
+core
+core.*
+*.core
+
+# Profiling data
+perf.data
+perf.data.old
+/profiling/
+*.prof
+*.heap
+
+# SwarmSH specific generated files
+/coordination-snapshots/
+/agent-snapshots/
+*.snapshot
+/telemetry-export/
+/shell-export-test/
+
+# JSON reports and validation files (already committed, keep for now)
+# *.json
+# validation_summary.md
+# telemetry_instrumentation_summary.md
+
+# Keep important files
+!.gitkeep
+!README.md
+!CLAUDE.md
+!Cargo.toml
+!Makefile
+!weaver.yaml
+!semantic-conventions/
+!templates/
+!src/
+!tests/
+!examples/
+!docs/
+!scripts/
+!.github/
+
+# But ignore generated docs
+docs/generated/
+docs/api/
+
+# Keep the generated code directory as it's part of the 73% goal
+!src/generated/
+!src/generated/*.rs

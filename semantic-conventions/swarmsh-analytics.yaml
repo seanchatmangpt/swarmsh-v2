@@ -1,0 +1,328 @@
+groups:
+  - id: swarmsh.analytics
+    prefix: swarmsh.analytics
+    type: span
+    brief: "8020 analysis, optimization, and value stream operations"
+    note: >
+      This semantic convention defines the observability contract for
+      8020 principle analysis, value stream optimization, waste detection,
+      and continuous improvement operations in the SwarmSH system.
+      Implements Design for Lean Six Sigma (DLSS) principles.
+    attributes:
+      - id: analytics.tier
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "8020 optimization tier classification"
+        note: >
+          Classifies operations according to Pareto Principle efficiency.
+          Tier1 represents 20% effort producing 80% value.
+          Used for resource allocation and optimization priority.
+        examples:
+          - "tier1"  # 20% effort, 80% value (high priority)
+          - "tier2"  # 80% effort, 20% value (optimization candidates)
+          
+      - id: analytics.value_ratio
+        requirement_level: recommended
+        stability: stable
+        type: double
+        brief: "Effort-to-value ratio measurement"
+        note: >
+          Quantitative measure of value generation efficiency.
+          Higher ratios indicate better effort-to-value conversion.
+          Used for 8020 classification and optimization targeting.
+        examples:
+          - 4.0   # High value ratio (80% value / 20% effort)
+          - 0.25  # Low value ratio (20% value / 80% effort)
+          - 1.0   # Balanced ratio
+          
+      - id: analytics.optimization_type
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Type of optimization being analyzed or applied"
+        note: >
+          Categorizes the optimization approach or opportunity.
+          Used for optimization strategy tracking and effectiveness analysis.
+        examples:
+          - "waste_elimination"     # DLSS waste reduction
+          - "flow_optimization"     # Value stream flow improvement
+          - "quality_improvement"   # Six Sigma quality enhancement
+          - "capacity_optimization" # Resource utilization improvement
+          - "automation"           # Process automation opportunity
+          
+      - id: analytics.waste_type
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Type of waste identified in value stream"
+        note: >
+          When waste is detected, identifies the specific waste category
+          from the 7 wastes of Lean. Required when optimization_type
+          is 'waste_elimination'.
+        examples:
+          - "overproduction"    # Generating unneeded telemetry
+          - "waiting"          # Delays in insight availability
+          - "transport"        # Unnecessary data movement
+          - "over_processing"  # Complex instrumentation exceeding needs
+          - "inventory"        # Accumulation of unanalyzed data
+          - "motion"          # Inefficient data access patterns
+          - "defects"         # Missing or incorrect telemetry
+          
+      - id: analytics.waste_percentage
+        requirement_level: conditional
+        stability: stable
+        type: double
+        brief: "Percentage of waste identified in process"
+        note: >
+          Quantifies the amount of waste as percentage of total effort.
+          Required when waste_type is specified. Used for waste
+          reduction tracking and ROI calculation.
+        examples:
+          - 73.0  # 73% waste eliminated
+          - 45.0  # 45% waste identified
+          - 12.0  # 12% remaining waste
+          
+      - id: analytics.flow_efficiency
+        requirement_level: optional
+        stability: stable
+        type: double
+        brief: "Value stream flow efficiency percentage"
+        note: >
+          Measures the percentage of time spent on value-add activities
+          versus total process time. Core DLSS metric for flow optimization.
+        examples:
+          - 84.0  # 84% flow efficiency (excellent)
+          - 45.0  # 45% flow efficiency (needs improvement)
+          - 12.0  # 12% flow efficiency (poor)
+          
+      - id: analytics.lead_time_ms
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Total lead time from input to output in milliseconds"
+        note: >
+          Measures end-to-end process duration from initial event
+          to final output. Key DLSS metric for time-based optimization.
+        examples:
+          - 2100      # 2.1 seconds (excellent)
+          - 47000     # 47 seconds (good)
+          - 2820000   # 47 minutes (needs improvement)
+          
+      - id: analytics.cycle_time_ms
+        requirement_level: optional
+        stability: stable
+        type: int
+        brief: "Active processing time in milliseconds"
+        note: >
+          Time spent actively processing, excluding waiting time.
+          Used with lead_time_ms to calculate flow efficiency.
+        examples:
+          - 1100   # 1.1 seconds active processing
+          - 8300   # 8.3 seconds active processing
+          
+      - id: analytics.throughput
+        requirement_level: optional
+        stability: stable
+        type: double
+        brief: "Process throughput rate (items per time unit)"
+        note: >
+          Measures process capacity and flow rate. Used for
+          capacity planning and bottleneck identification.
+        examples:
+          - 340.0  # 340% improvement in throughput
+          - 1000.0 # 1000 items per second
+          
+      - id: analytics.bottleneck
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Identified process bottleneck constraining flow"
+        note: >
+          Specific bottleneck limiting value stream performance.
+          Used for targeted optimization and capacity planning.
+        examples:
+          - "coordination_lock_contention"
+          - "telemetry_processing_capacity"
+          - "ai_response_latency"
+          - "file_system_io_bandwidth"
+          
+      - id: analytics.sigma_level
+        requirement_level: optional
+        stability: experimental
+        type: double
+        brief: "Six Sigma quality level measurement"
+        note: >
+          Statistical quality measurement in sigma levels.
+          Combines Lean flow optimization with Six Sigma quality control.
+        examples:
+          - 4.2  # 4.2 sigma quality level (excellent)
+          - 3.8  # 3.8 sigma quality level (good)
+          - 2.1  # 2.1 sigma quality level (needs improvement)
+          
+      - id: analytics.defect_rate_dpmo
+        requirement_level: optional
+        stability: experimental
+        type: int
+        brief: "Defect rate in Defects Per Million Opportunities (DPMO)"
+        note: >
+          Six Sigma quality metric measuring defect frequency.
+          Used for quality control and improvement tracking.
+        examples:
+          - 32    # 32 DPMO (excellent)
+          - 233   # 233 DPMO (good)
+          - 6210  # 6210 DPMO (needs improvement)
+          
+      - id: analytics.recommendation
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "AI-generated optimization recommendation"
+        note: >
+          Automated recommendation for process improvement based
+          on analytics results. Generated by AI analysis engines.
+        examples:
+          - "Implement pull-based instrumentation to reduce overproduction"
+          - "Optimize coordination lock duration to improve flow"
+          - "Add statistical process control for quality improvement"
+          
+      - id: analytics.roi_percentage
+        requirement_level: optional
+        stability: experimental
+        type: double
+        brief: "Return on investment percentage for optimization"
+        note: >
+          Calculated or estimated ROI for implementing the identified
+          optimization. Used for prioritizing improvement efforts.
+        examples:
+          - 340.0  # 340% ROI (excellent)
+          - 150.0  # 150% ROI (good)
+          - 45.0   # 45% ROI (marginal)
+          
+      - id: analytics.baseline_value
+        requirement_level: conditional
+        stability: stable
+        type: double
+        brief: "Baseline measurement before optimization"
+        note: >
+          Pre-optimization baseline value for comparison.
+          Required for improvement measurement and ROI calculation.
+        examples:
+          - 2820000  # 47 minutes baseline lead time
+          - 12.0     # 12% baseline flow efficiency
+          
+      - id: analytics.current_value
+        requirement_level: conditional
+        stability: stable
+        type: double
+        brief: "Current measurement after optimization"
+        note: >
+          Post-optimization current value for comparison.
+          Used with baseline_value to calculate improvement percentage.
+        examples:
+          - 126000  # 2.1 minutes current lead time
+          - 84.0    # 84% current flow efficiency
+          
+      - id: analytics.cliapi_integration
+        requirement_level: optional
+        stability: experimental
+        type: boolean
+        brief: "Whether this analytics operation involves CLIAPI principles"
+        note: >
+          Indicates if the analysis incorporates machine-first CLI design,
+          YAML specifications, or other CLIAPI methodology elements.
+        examples:
+          - true   # Analysis includes CLIAPI methodology
+          - false  # Standard analytics operation
+
+operations:
+  - id: swarmsh.analytics.8020_analysis
+    brief: "Pareto principle analysis of system operations"
+    note: >
+      Analyzes system operations to identify Tier 1 (high-value)
+      and Tier 2 (optimization candidate) activities.
+      
+  - id: swarmsh.analytics.value_stream_mapping
+    brief: "Maps value stream flow and identifies waste"
+    note: >
+      Comprehensive analysis of value stream from input to output,
+      identifying waste, bottlenecks, and optimization opportunities.
+      
+  - id: swarmsh.analytics.waste_detection
+    brief: "Identifies and quantifies waste in processes"
+    note: >
+      Systematic detection of the 7 wastes of Lean in observability
+      and coordination processes. Supports automated waste elimination.
+      
+  - id: swarmsh.analytics.flow_optimization
+    brief: "Optimizes value stream flow characteristics"
+    note: >
+      Improves flow efficiency, reduces lead time, and eliminates
+      bottlenecks in value streams. Core DLSS optimization operation.
+      
+  - id: swarmsh.analytics.quality_analysis
+    brief: "Six Sigma quality analysis and improvement"
+    note: >
+      Statistical quality analysis using Six Sigma methods.
+      Measures sigma levels, defect rates, and quality improvement opportunities.
+      
+  - id: swarmsh.analytics.cliapi_methodology_analysis
+    brief: "Analysis incorporating CLIAPI principles and methodology"
+    note: >
+      Evaluates system performance and optimization opportunities
+      through the lens of machine-first CLI design and YAML specifications.
+
+examples:
+  - name: 8020 System Analysis
+    brief: "Overall system 8020 principle analysis"
+    attributes:
+      swarmsh.analytics.tier: "tier1"
+      swarmsh.analytics.value_ratio: 4.0
+      swarmsh.analytics.optimization_type: "8020_classification"
+      swarmsh.analytics.throughput: 340.0
+      swarmsh.analytics.recommendation: "Focus optimization on identified Tier 1 operations"
+      swarmsh.analytics.cliapi_integration: true
+      
+  - name: Observability Waste Detection
+    brief: "Telemetry overproduction waste identified"
+    attributes:
+      swarmsh.analytics.tier: "tier1"
+      swarmsh.analytics.optimization_type: "waste_elimination"
+      swarmsh.analytics.waste_type: "overproduction"
+      swarmsh.analytics.waste_percentage: 73.0
+      swarmsh.analytics.baseline_value: 847.0    # GB/day baseline
+      swarmsh.analytics.current_value: 228.0     # GB/day current
+      swarmsh.analytics.roi_percentage: 245.0
+      swarmsh.analytics.recommendation: "Implement pull-based instrumentation model"
+      
+  - name: Value Stream Flow Optimization
+    brief: "End-to-end flow optimization analysis"
+    attributes:
+      swarmsh.analytics.tier: "tier1"
+      swarmsh.analytics.optimization_type: "flow_optimization"
+      swarmsh.analytics.flow_efficiency: 84.0
+      swarmsh.analytics.lead_time_ms: 126000        # 2.1 minutes
+      swarmsh.analytics.cycle_time_ms: 1100         # 1.1 seconds
+      swarmsh.analytics.baseline_value: 2820000     # 47 minutes baseline
+      swarmsh.analytics.current_value: 126000      # 2.1 minutes current
+      swarmsh.analytics.bottleneck: "telemetry_processing_capacity"
+      
+  - name: Six Sigma Quality Analysis
+    brief: "Statistical quality control analysis"
+    attributes:
+      swarmsh.analytics.tier: "tier1"
+      swarmsh.analytics.optimization_type: "quality_improvement"
+      swarmsh.analytics.sigma_level: 4.2
+      swarmsh.analytics.defect_rate_dpmo: 32
+      swarmsh.analytics.flow_efficiency: 84.0
+      swarmsh.analytics.recommendation: "Maintain current quality levels with statistical monitoring"
+      
+  - name: CLIAPI Methodology Integration
+    brief: "Analysis incorporating CLIAPI principles for machine-first design"
+    attributes:
+      swarmsh.analytics.tier: "tier1"
+      swarmsh.analytics.optimization_type: "automation"
+      swarmsh.analytics.value_ratio: 3.2
+      swarmsh.analytics.cliapi_integration: true
+      swarmsh.analytics.recommendation: "Apply YAML specification patterns to coordination protocols"
+      swarmsh.analytics.roi_percentage: 280.0

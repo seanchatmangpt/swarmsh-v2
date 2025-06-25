@@ -1,0 +1,250 @@
+# SwarmSH v2 Base Semantic Conventions
+# Core attributes and telemetry definitions
+
+groups:
+  # Agent lifecycle and management
+  - id: swarmsh.agent
+    type: attribute_group
+    brief: 'Attributes for agent lifecycle and identification'
+    note: 'Agents are the core workers in the SwarmSH system with nanosecond precision tracking'
+    attributes:
+      - id: swarmsh.agent.id
+        type: string
+        brief: 'Unique agent identifier with nanosecond precision'
+        examples: ['agent_1234567890123456789']
+        requirement_level: required
+        
+      - id: swarmsh.agent.role
+        type: string
+        brief: 'Role of the agent in the swarm'
+        examples: ['coordinator', 'worker', 'observer', 'analyzer']
+        requirement_level: required
+        
+      - id: swarmsh.agent.status
+        type: string
+        brief: 'Current status of the agent'
+        examples: ['active', 'idle', 'working', 'blocked', 'failed']
+        requirement_level: recommended
+        
+      - id: swarmsh.agent.capacity
+        type: double
+        brief: 'Work capacity of the agent (0.0-1.0)'
+        examples: [0.8, 1.0]
+        requirement_level: recommended
+        
+      - id: swarmsh.agent.specializations
+        type: string[]
+        brief: 'List of agent specializations'
+        examples: [['rust', 'telemetry'], ['shell', 'coordination']]
+        
+  # Coordination patterns and protocols
+  - id: swarmsh.coordination
+    type: attribute_group
+    brief: 'Coordination protocol attributes'
+    note: 'SwarmSH uses multiple coordination patterns including Scrum at Scale and Roberts Rules'
+    attributes:
+      - id: swarmsh.coordination.pattern
+        type: string
+        brief: 'Active coordination pattern'
+        examples: ['scrum_at_scale', 'roberts_rules', 'realtime', 'atomic']
+        requirement_level: required
+        
+      - id: swarmsh.coordination.epoch
+        type: int
+        brief: 'Coordination epoch for conflict resolution'
+        examples: [1234567890]
+        requirement_level: required
+        
+      - id: swarmsh.coordination.participant_count
+        type: int
+        brief: 'Number of participants in coordination'
+        examples: [5, 10, 25]
+        
+      - id: swarmsh.coordination.latency_ms
+        type: double
+        brief: 'Coordination latency in milliseconds'
+        examples: [1.5, 0.8]
+        
+      - id: swarmsh.coordination.conflict_resolution
+        type: string
+        brief: 'Conflict resolution method used'
+        examples: ['mathematical', 'consensus', 'leader_election']
+        
+  # Work item management
+  - id: swarmsh.work
+    type: attribute_group
+    brief: 'Work item tracking attributes'
+    attributes:
+      - id: swarmsh.work.id
+        type: string
+        brief: 'Unique work item identifier'
+        examples: ['work_9876543210']
+        requirement_level: required
+        
+      - id: swarmsh.work.status
+        type: string
+        brief: 'Current status of work item'
+        examples: ['pending', 'assigned', 'in_progress', 'completed', 'failed']
+        requirement_level: required
+        
+      - id: swarmsh.work.priority
+        type: double
+        brief: 'Work item priority (0.0-1.0)'
+        examples: [0.9, 0.5, 0.1]
+        requirement_level: recommended
+        
+      - id: swarmsh.work.assigned_agent
+        type: string
+        brief: 'ID of agent assigned to this work'
+        examples: ['agent_1234567890']
+        
+      - id: swarmsh.work.estimated_duration_ms
+        type: int
+        brief: 'Estimated duration in milliseconds'
+        examples: [5000, 30000]
+        
+  # Health monitoring
+  - id: swarmsh.health
+    type: attribute_group
+    brief: 'System health monitoring attributes'
+    attributes:
+      - id: swarmsh.health.component
+        type: string
+        brief: 'Component being monitored'
+        examples: ['coordination', 'telemetry', 'ai_integration', 'storage']
+        requirement_level: required
+        
+      - id: swarmsh.health.status
+        type: string
+        brief: 'Health status of component'
+        examples: ['healthy', 'degraded', 'unhealthy', 'critical']
+        requirement_level: required
+        
+      - id: swarmsh.health.bottleneck_detected
+        type: boolean
+        brief: 'Whether a bottleneck was detected'
+        examples: [true, false]
+        
+      - id: swarmsh.health.tier
+        type: string
+        brief: 'Monitoring tier (tier1 or tier2)'
+        examples: ['tier1', 'tier2']
+        
+  # Analytics and optimization
+  - id: swarmsh.analytics
+    type: attribute_group
+    brief: 'DLSS 8020 analytics attributes'
+    note: 'Design for Lean Six Sigma optimization metrics'
+    attributes:
+      - id: swarmsh.analytics.tier
+        type: string
+        brief: 'Analytics tier for 8020 analysis'
+        examples: ['vital_few', 'useful_many']
+        
+      - id: swarmsh.analytics.waste_type
+        type: string
+        brief: 'Type of waste identified (7 wastes)'
+        examples: ['overproduction', 'waiting', 'transport', 'overprocessing', 'inventory', 'motion', 'defects']
+        
+      - id: swarmsh.analytics.flow_efficiency
+        type: double
+        brief: 'Flow efficiency percentage'
+        examples: [84.0, 92.5]
+        
+      - id: swarmsh.analytics.optimization_type
+        type: string
+        brief: 'Type of optimization applied'
+        examples: ['pareto', 'value_stream', 'bottleneck_removal']
+        
+      - id: swarmsh.analytics.sigma_level
+        type: double
+        brief: 'Six Sigma quality level'
+        examples: [4.2, 5.0, 6.0]
+        
+  # AI integration
+  - id: swarmsh.ai
+    type: attribute_group
+    brief: 'AI integration attributes for Claude and Ollama'
+    attributes:
+      - id: swarmsh.ai.provider
+        type: string
+        brief: 'AI provider being used'
+        examples: ['claude', 'ollama', 'both']
+        requirement_level: required
+        
+      - id: swarmsh.ai.model
+        type: string
+        brief: 'AI model name'
+        examples: ['claude-3-opus', 'llama3', 'mixtral']
+        
+      - id: swarmsh.ai.decision_type
+        type: string
+        brief: 'Type of AI decision'
+        examples: ['work_assignment', 'pattern_analysis', 'optimization']
+        
+      - id: swarmsh.ai.confidence
+        type: double
+        brief: 'AI decision confidence (0.0-1.0)'
+        examples: [0.95, 0.8, 0.6]
+        
+      - id: swarmsh.ai.streaming
+        type: boolean
+        brief: 'Whether streaming mode is enabled'
+        examples: [true, false]
+        
+# Span definitions
+  - id: swarmsh.agent.lifecycle
+    type: span
+    brief: 'Span for agent lifecycle operations'
+    attributes:
+      - ref: swarmsh.agent.id
+        requirement_level: required
+      - ref: swarmsh.agent.role
+      - ref: swarmsh.agent.status
+        
+  - id: swarmsh.work.coordination
+    type: span
+    brief: 'Span for work coordination operations'
+    attributes:
+      - ref: swarmsh.work.id
+        requirement_level: required
+      - ref: swarmsh.work.status
+      - ref: swarmsh.work.assigned_agent
+        
+  - id: swarmsh.coordination.protocol
+    type: span
+    brief: 'Span for coordination protocol execution'
+    attributes:
+      - ref: swarmsh.coordination.pattern
+        requirement_level: required
+      - ref: swarmsh.coordination.epoch
+      - ref: swarmsh.coordination.participant_count
+        
+# Metric definitions
+  - id: swarmsh.agent.registrations
+    type: metric
+    metric_name: swarmsh.agent.registrations.total
+    brief: 'Total number of agent registrations'
+    instrument: counter
+    unit: '{registration}'
+    attributes:
+      - ref: swarmsh.agent.role
+        
+  - id: swarmsh.work.completed
+    type: metric
+    metric_name: swarmsh.work.completed.total
+    brief: 'Total number of completed work items'
+    instrument: counter
+    unit: '{item}'
+    attributes:
+      - ref: swarmsh.work.priority
+        
+  - id: swarmsh.coordination.duration
+    type: metric
+    metric_name: swarmsh.coordination.duration
+    brief: 'Duration of coordination operations'
+    instrument: histogram
+    unit: 'ms'
+    attributes:
+      - ref: swarmsh.coordination.pattern
+      - ref: swarmsh.coordination.conflict_resolution

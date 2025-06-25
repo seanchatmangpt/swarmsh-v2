@@ -1,0 +1,35 @@
+{
+    "timestamp": "2025-06-25T21:07:27.3NZ",
+    "coordination_epoch": 1750885647685385000,
+    "validation_summary": {
+        "weaver_version": "weaver 0.15.3",
+        "semantic_convention_files":        9,
+        "generated_telemetry_files":        4,
+        "test_files":        8
+    },
+    "semantic_conventions": {
+        "swarmsh_agent": "present",
+        "swarmsh_work": "present",
+        "swarmsh_coordination": "present",
+        "swarmsh_health": "present",
+        "swarmsh_analytics": "present",
+        "swarmsh_worktree": "present"
+    },
+    "generated_code": {
+        "span_builders": "generated",
+        "attributes": "generated",
+        "metrics": "generated",
+        "mod_rs": "generated"
+    },
+    "validation_status": {
+        "weaver_config_valid": "false",
+        "semantic_conventions_valid": "false",
+        "code_compiles": "false"
+    },
+    "recommendations": [
+        "Ensure all semantic convention files follow OTEL standards",
+        "Validate generated code compiles without errors",
+        "Run comprehensive test suite to verify telemetry functionality",
+        "Monitor telemetry output for correctness and performance"
+    ]
+}

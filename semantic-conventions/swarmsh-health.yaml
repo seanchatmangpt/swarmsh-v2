@@ -1,0 +1,273 @@
+groups:
+  - id: swarmsh.health
+    prefix: swarmsh.health
+    type: span
+    brief: "System health monitoring and bottleneck detection operations"
+    note: >
+      This semantic convention defines the observability contract for
+      system health assessment, performance monitoring, and automated
+      bottleneck detection in the SwarmSH coordination system.
+      Supports adaptive monitoring based on health scores.
+    attributes:
+      - id: health.score
+        requirement_level: required
+        stability: stable
+        type: int
+        brief: "Overall system health score (0-100)"
+        note: >
+          Calculated composite health score representing overall system
+          wellness. Used for automated decision making and alert thresholds.
+          Scores below 70 trigger increased monitoring frequency.
+        examples:
+          - 95  # Excellent health
+          - 85  # Good health  
+          - 75  # Warning state
+          - 60  # Critical state
+          
+      - id: health.component
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "System component being monitored"
+        note: >
+          Identifies which subsystem or component this health check
+          applies to. Enables component-specific health tracking and
+          targeted optimization.
+        examples:
+          - "coordination"  # Agent coordination system
+          - "telemetry"     # Observability pipeline
+          - "automation"    # 8020 automation system
+          - "ai"           # AI integration layer
+          - "work_queue"   # Work distribution system
+          - "storage"      # File system and data storage
+          
+      - id: health.status
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "Component health status classification"
+        note: >
+          Categorical health assessment for the component. Used for
+          alert routing and operational response prioritization.
+        examples:
+          - "healthy"   # 80-100 score
+          - "warning"   # 60-79 score
+          - "critical"  # 0-59 score
+          - "unknown"   # Unable to determine
+          
+      - id: health.bottleneck
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Identified performance bottleneck"
+        note: >
+          When performance issues are detected, identifies the specific
+          bottleneck constraining system performance. Used for targeted
+          optimization and capacity planning.
+        examples:
+          - "work_queue_contention"
+          - "telemetry_processing_lag"
+          - "coordination_lock_contention"
+          - "ai_response_latency"
+          - "file_system_io"
+          - "memory_pressure"
+          
+      - id: health.metric_name
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "Specific metric being measured"
+        note: >
+          Identifies the specific performance or health metric being
+          reported. Enables metric-specific analysis and trending.
+        examples:
+          - "coordination_latency_ms"
+          - "work_claim_success_rate"
+          - "telemetry_span_generation_rate"
+          - "agent_heartbeat_success_rate"
+          - "memory_usage_percentage"
+          
+      - id: health.metric_value
+        requirement_level: conditional
+        stability: stable
+        type: double
+        brief: "Current value of the health metric"
+        note: >
+          Actual measured value for the metric. Required when
+          health.metric_name is specified. Used for trending and analysis.
+        examples:
+          - 95.5   # Success rate percentage
+          - 12.3   # Latency in milliseconds
+          - 67.8   # Memory usage percentage
+          
+      - id: health.threshold_warning
+        requirement_level: optional
+        stability: stable
+        type: double
+        brief: "Warning threshold for this metric"
+        note: >
+          Threshold value above which the metric indicates warning state.
+          Used for automated alerting and health score calculation.
+        examples:
+          - 100.0  # Latency warning threshold (ms)
+          - 80.0   # Memory usage warning threshold (%)
+          
+      - id: health.threshold_critical
+        requirement_level: optional
+        stability: stable
+        type: double
+        brief: "Critical threshold for this metric"
+        note: >
+          Threshold value above which the metric indicates critical state.
+          Used for automated alerting and emergency response.
+        examples:
+          - 500.0  # Latency critical threshold (ms)
+          - 95.0   # Memory usage critical threshold (%)
+          
+      - id: health.trend
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Trend direction for this health metric"
+        note: >
+          Indicates whether the metric is improving, degrading, or stable.
+          Used for predictive health monitoring and proactive optimization.
+        examples:
+          - "improving"
+          - "degrading"
+          - "stable"
+          - "volatile"
+          
+      - id: health.recommendation
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "AI-generated health improvement recommendation"
+        note: >
+          Automated recommendation for improving this health metric.
+          Generated by AI analysis of historical patterns and current state.
+        examples:
+          - "Increase coordination timeout threshold"
+          - "Scale up telemetry processing capacity"
+          - "Optimize work queue distribution algorithm"
+          
+      - id: health.check_duration_ms
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "Duration of health check operation in milliseconds"
+        note: >
+          Time taken to perform this health check. Used for monitoring
+          the monitoring system itself and detecting check performance issues.
+        examples:
+          - 5    # Fast check
+          - 50   # Normal check
+          - 500  # Slow check (investigate)
+          
+      - id: health.automated_action
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Automated remediation action taken"
+        note: >
+          When automated remediation is enabled, describes the action
+          taken in response to health issues. Used for automation auditing.
+        examples:
+          - "increased_monitoring_frequency"
+          - "scaled_processing_capacity"
+          - "triggered_cleanup_automation"
+          - "sent_alert_notification"
+          
+      - id: health.monitoring_tier
+        requirement_level: recommended
+        stability: stable
+        type: string
+        brief: "8020 monitoring tier classification"
+        note: >
+          Classifies health monitoring according to 8020 principle.
+          Tier1 monitoring focuses on high-value, frequent checks.
+        examples:
+          - "tier1"  # 20% effort, 80% value
+          - "tier2"  # 80% effort, 20% value
+
+operations:
+  - id: swarmsh.health.system_check
+    brief: "Comprehensive system health assessment"
+    note: >
+      Performs full system health evaluation across all components.
+      Generates composite health score and identifies bottlenecks.
+      
+  - id: swarmsh.health.component_check
+    brief: "Individual component health assessment"
+    note: >
+      Checks health of specific system component. Used for targeted
+      monitoring and component-specific optimization.
+      
+  - id: swarmsh.health.bottleneck_detection
+    brief: "Performance bottleneck identification"
+    note: >
+      Analyzes system performance to identify constraints and
+      optimization opportunities. Supports automated remediation.
+      
+  - id: swarmsh.health.metric_collection
+    brief: "Collection of specific health metrics"
+    note: >
+      Gathers specific performance or health metrics for analysis.
+      Used for trending, alerting, and optimization planning.
+      
+  - id: swarmsh.health.automated_remediation
+    brief: "Automated response to health issues"
+    note: >
+      Takes automated corrective action in response to health
+      problems. Part of 8020 automation system.
+
+examples:
+  - name: System Health Check
+    brief: "Overall system health assessment"
+    attributes:
+      swarmsh.health.score: 87
+      swarmsh.health.component: "system"
+      swarmsh.health.status: "healthy"
+      swarmsh.health.check_duration_ms: 45
+      swarmsh.health.monitoring_tier: "tier1"
+      
+  - name: Coordination Performance Issue
+    brief: "Coordination component showing performance degradation"
+    attributes:
+      swarmsh.health.score: 68
+      swarmsh.health.component: "coordination"
+      swarmsh.health.status: "warning"
+      swarmsh.health.bottleneck: "coordination_lock_contention"
+      swarmsh.health.metric_name: "coordination_latency_ms"
+      swarmsh.health.metric_value: 150.5
+      swarmsh.health.threshold_warning: 100.0
+      swarmsh.health.threshold_critical: 500.0
+      swarmsh.health.trend: "degrading"
+      swarmsh.health.recommendation: "Reduce coordination lock hold time"
+      swarmsh.health.monitoring_tier: "tier1"
+      
+  - name: Telemetry Processing Bottleneck
+    brief: "Telemetry system experiencing processing delays"
+    attributes:
+      swarmsh.health.score: 55
+      swarmsh.health.component: "telemetry"
+      swarmsh.health.status: "critical"
+      swarmsh.health.bottleneck: "telemetry_processing_lag"
+      swarmsh.health.metric_name: "telemetry_span_generation_rate"
+      swarmsh.health.metric_value: 45.2
+      swarmsh.health.threshold_warning: 100.0
+      swarmsh.health.threshold_critical: 50.0
+      swarmsh.health.automated_action: "scaled_processing_capacity"
+      swarmsh.health.monitoring_tier: "tier1"
+      
+  - name: AI Integration Health
+    brief: "AI system component health check"
+    attributes:
+      swarmsh.health.score: 92
+      swarmsh.health.component: "ai"
+      swarmsh.health.status: "healthy"
+      swarmsh.health.metric_name: "ai_response_latency"
+      swarmsh.health.metric_value: 850.0
+      swarmsh.health.threshold_warning: 2000.0
+      swarmsh.health.trend: "stable"
+      swarmsh.health.monitoring_tier: "tier2"

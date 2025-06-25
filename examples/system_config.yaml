@@ -1,0 +1,415 @@
+# SwarmSH v2 System Configuration
+# Complete configuration for observability-first agent coordination
+
+# System identification
+system:
+  name: "SwarmSH v2 Coordination System"
+  version: "2.0.0"
+  environment: "development"  # development, staging, production
+  deployment_mode: "hybrid"   # rust_native, shell_export, hybrid
+
+# Coordination patterns configuration
+coordination:
+  # Primary coordination pattern (Scrum at Scale, NOT SAFe)
+  default_pattern: "scrum_at_scale"
+  
+  # Pattern-specific settings
+  patterns:
+    scrum_at_scale:
+      enabled: true
+      sprint_duration_days: 14
+      daily_scrum_time: "09:00"
+      scrum_of_scrums_frequency: "weekly"
+      retrospective_enabled: true
+      
+    roberts_rules:
+      enabled: true
+      quorum_percentage: 0.6
+      voting_threshold: "simple_majority"
+      meeting_timeout_minutes: 60
+      motion_discussion_time_minutes: 15
+      
+    realtime:
+      enabled: true
+      max_latency_ms: 10
+      heartbeat_interval_ms: 1000
+      coordination_timeout_ms: 5000
+      
+    atomic:
+      enabled: true
+      lock_timeout_ms: 30000
+      retry_count: 3
+      retry_delay_ms: 100
+
+# Agent configuration
+agents:
+  # Nanosecond precision ID generation
+  id_precision: "nanosecond"
+  id_prefix: "agent_"
+  
+  # Default agent settings
+  defaults:
+    capacity: 0.8
+    work_capacity: 3
+    heartbeat_interval_ms: 30000
+    coordination_timeout_ms: 10000
+    
+  # Role definitions
+  roles:
+    coordinator:
+      capacity_range: [0.9, 1.0]
+      required_specializations: ["coordination", "leadership"]
+      max_concurrent_work: 5
+      
+    worker:
+      capacity_range: [0.5, 1.0]
+      required_specializations: []
+      max_concurrent_work: 3
+      
+    analyzer:
+      capacity_range: [0.7, 1.0]
+      required_specializations: ["analysis", "optimization"]
+      max_concurrent_work: 2
+      
+    optimizer:
+      capacity_range: [0.8, 1.0]
+      required_specializations: ["8020", "dlss", "performance"]
+      max_concurrent_work: 2
+      
+    monitor:
+      capacity_range: [0.6, 1.0]
+      required_specializations: ["monitoring", "health"]
+      max_concurrent_work: 1
+
+# Work queue configuration
+work_queue:
+  # Pull-based distribution
+  distribution_model: "pull_based"
+  
+  # Work item settings
+  id_precision: "nanosecond"
+  id_prefix: "work_"
+  
+  # Priority levels
+  priorities:
+    - critical
+    - high
+    - medium
+    - low
+    
+  # Work types
+  types:
+    - feature
+    - bug
+    - optimization
+    - analysis
+    - coordination
+    - monitoring
+    
+  # Queue management
+  max_queue_depth: 1000
+  claim_timeout_ms: 300000  # 5 minutes
+  progress_update_interval_ms: 30000
+  
+  # CLIAPI integration
+  yaml_specification_required: true
+  machine_first_design: true
+  json_output_default: true
+
+# Telemetry configuration (OTEL Weaver integration)
+telemetry:
+  # OpenTelemetry settings
+  otel:
+    service_name: "swarmsh-v2"
+    service_version: "2.0.0"
+    environment: "development"
+    
+  # Semantic conventions
+  semantic_conventions:
+    validation: "strict"
+    auto_generation: true
+    drift_prevention: true
+    
+  # Export settings
+  exporters:
+    console:
+      enabled: true
+      log_level: "info"
+      
+    jaeger:
+      enabled: false
+      endpoint: "http://localhost:14268/api/traces"
+      
+    prometheus:
+      enabled: false
+      endpoint: "http://localhost:9090/metrics"
+      
+  # Telemetry generation
+  spans:
+    agent_operations: true
+    work_operations: true
+    coordination_operations: true
+    health_operations: true
+    analytics_operations: true
+    
+  metrics:
+    coordination_latency: true
+    work_throughput: true
+    agent_health: true
+    system_performance: true
+
+# Health monitoring configuration
+health:
+  # Monitoring intervals (8020 adaptive)
+  tier1_interval_ms: 15000    # High-value checks every 15 seconds
+  tier2_interval_ms: 300000   # Lower-value checks every 5 minutes
+  
+  # Health scoring
+  scoring:
+    excellent_threshold: 90
+    good_threshold: 75
+    warning_threshold: 60
+    critical_threshold: 40
+    
+  # Component monitoring
+  components:
+    coordination:
+      enabled: true
+      weight: 0.3
+      
+    telemetry:
+      enabled: true
+      weight: 0.2
+      
+    work_queue:
+      enabled: true
+      weight: 0.2
+      
+    agents:
+      enabled: true
+      weight: 0.2
+      
+    ai_integration:
+      enabled: true
+      weight: 0.1
+      
+  # Bottleneck detection
+  bottleneck_detection:
+    enabled: true
+    analysis_window_ms: 300000
+    threshold_multiplier: 2.0
+    
+  # Automated remediation
+  auto_remediation:
+    enabled: true
+    max_actions_per_hour: 10
+    conservative_mode: true
+
+# 8020 Analytics configuration (DLSS optimization)
+analytics:
+  # Pareto analysis
+  pareto:
+    tier1_threshold: 0.8  # 80% value from 20% effort
+    analysis_window_hours: 24
+    update_interval_minutes: 60
+    
+  # Value stream optimization
+  value_stream:
+    flow_efficiency_target: 0.85
+    lead_time_target_ms: 126000  # 2.1 minutes
+    waste_reduction_target: 0.73  # 73% waste elimination
+    
+  # DLSS metrics
+  dlss:
+    quality_target_sigma: 4.2
+    defect_rate_target_dpmo: 50
+    process_efficiency_target: 0.84
+    
+  # Waste detection (7 wastes of Lean)
+  waste_detection:
+    overproduction: true
+    waiting: true
+    transport: true
+    over_processing: true
+    inventory: true
+    motion: true
+    defects: true
+    
+  # ROI tracking
+  roi:
+    baseline_measurement: true
+    improvement_tracking: true
+    target_roi_percentage: 250.0
+
+# AI integration configuration
+ai:
+  # Claude integration
+  claude:
+    enabled: true
+    api_endpoint: "https://api.anthropic.com/v1"
+    model: "claude-3-sonnet-20240229"
+    max_tokens: 4000
+    temperature: 0.1
+    
+    # Use cases
+    system_analysis: true
+    optimization_recommendations: true
+    decision_support: true
+    
+  # Ollama integration (local LLM)
+  ollama:
+    enabled: true
+    endpoint: "http://localhost:11434"
+    model: "llama3.2"
+    
+    # Use cases
+    local_analysis: true
+    rapid_decisions: true
+    offline_operation: true
+    
+  # AI decision thresholds
+  confidence_threshold: 0.8
+  fallback_to_human: true
+  audit_ai_decisions: true
+
+# Shell export configuration
+shell_export:
+  # Export settings
+  enabled: true
+  output_directory: "./shell-export"
+  optimization_level: 2  # 1-3, higher = more optimized
+  
+  # Component inclusion
+  include_telemetry: true
+  include_ai_integration: true
+  include_health_monitoring: true
+  include_analytics: true
+  
+  # Shell compatibility
+  target_shell: "bash"
+  posix_compliance: true
+  unix_native_operations: true
+  
+  # File operations
+  atomic_file_operations: true
+  file_locking: true
+  nanosecond_timestamps: true
+
+# Security configuration
+security:
+  # Authentication
+  authentication:
+    enabled: false  # Development mode
+    method: "none"  # none, api_key, jwt, oauth
+    
+  # Authorization
+  authorization:
+    enabled: false  # Development mode
+    rbac: false
+    
+  # Encryption
+  encryption:
+    in_transit: false  # Development mode
+    at_rest: false     # Development mode
+    
+  # Audit logging
+  audit:
+    enabled: true
+    log_level: "info"
+    include_ai_decisions: true
+
+# File system configuration
+filesystem:
+  # Working directories
+  work_dir: "./work"
+  temp_dir: "./tmp"
+  log_dir: "./logs"
+  config_dir: "./config"
+  
+  # File locking (for atomic operations)
+  file_locking:
+    enabled: true
+    timeout_ms: 30000
+    retry_count: 3
+    
+  # Coordination files
+  coordination_files:
+    agent_registry: "./work/agents.json"
+    work_queue: "./work/queue.json"
+    coordination_state: "./work/coordination.json"
+    health_state: "./work/health.json"
+
+# Logging configuration
+logging:
+  # Log levels
+  default_level: "info"
+  component_levels:
+    coordination: "debug"
+    telemetry: "info"
+    health: "info"
+    analytics: "info"
+    shell_export: "info"
+    
+  # Output configuration
+  console_output: true
+  file_output: true
+  structured_logging: true
+  
+  # File rotation
+  rotation:
+    enabled: true
+    max_size_mb: 100
+    max_files: 10
+
+# Performance configuration
+performance:
+  # Concurrency limits
+  max_concurrent_agents: 100
+  max_concurrent_work_items: 1000
+  max_coordination_operations: 50
+  
+  # Timeouts
+  default_timeout_ms: 30000
+  coordination_timeout_ms: 10000
+  health_check_timeout_ms: 5000
+  
+  # Resource limits
+  max_memory_mb: 1024
+  max_cpu_percentage: 80.0
+  
+  # Optimization targets (26x performance)
+  target_multiplier: 26.0
+  baseline_operations_per_second: 100
+  target_operations_per_second: 2600
+
+# Development configuration
+development:
+  # Debug settings
+  debug_mode: true
+  verbose_logging: true
+  development_tools: true
+  
+  # Hot reload
+  hot_reload: true
+  watch_files: true
+  
+  # Testing
+  test_mode: false
+  mock_ai_integration: false
+  
+# CDCS integration
+cdcs:
+  # Compound intelligence
+  compound_intelligence: true
+  session_continuity: true
+  infinite_loops: true
+  
+  # Performance optimization
+  performance_multiplier: 26.0
+  spr_efficiency: 0.8  # 80% token reduction
+  automation_level: "autonomous"
+  
+  # Context management
+  context_tracking: true
+  project_awareness: true
+  workspace_detection: true
