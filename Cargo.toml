@@ -22,6 +22,14 @@ path = "src/bin/shell_exporter.rs"
 name = "swarmsh-worktree"
 path = "src/bin/worktree_manager.rs"
 
+[[bin]]
+name = "generate_telemetry"
+path = "src/bin/generate_telemetry.rs"
+
+[[bin]]
+name = "validate_telemetry"
+path = "src/bin/validate_telemetry.rs"
+
 [dependencies]
 # OpenTelemetry Core - Comprehensive OTEL Stack
 opentelemetry = "0.23"
@@ -63,8 +71,8 @@ reqwest = { version = "0.11", features = ["json"], optional = true }
 # CLI Framework (CLIAPI Principles)
 clap = { version = "4.0", features = ["derive"] }
 
-# Shell Export with Tera templating
-tera = { version = "1.19", optional = true }
+# Shell Export with minijinja templating
+# tera = { version = "1.19", optional = true }  # Migrated to minijinja
 which = { version = "4.4", optional = true }
 
 # AI Integration
@@ -100,6 +108,6 @@ jaeger = ["opentelemetry-jaeger"]
 prometheus = ["opentelemetry-prometheus", "metrics-exporter-prometheus"]
 otlp = ["opentelemetry-otlp"]
 stdout = ["opentelemetry-stdout"]
-shell-export = ["tera", "which"]
+shell-export = ["which"]
 ai-integration = ["reqwest", "ollama-rs"]
 full-telemetry = ["jaeger", "prometheus", "otlp", "stdout"]

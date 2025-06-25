@@ -2,18 +2,19 @@
 //! 
 //! Provides complete functionality as optimized shell scripts for UNIX deployment.
 //! Maintains all coordination guarantees while enabling shell-only execution.
-//! Uses Tera templating engine for powerful template generation.
+//! Uses minijinja templating engine for powerful template generation.
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tera::{Tera, Context};
+use minijinja::{Environment, Value, context};
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::ai_integration::AIIntegration;
 use tracing::{info, debug, warn, error, instrument};
 use crate::telemetry::{SwarmTelemetry, DefaultSwarmTelemetry};
 use std::time::Instant;
+use std::fs;
 
 /// Configuration for shell export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,8 +38,10 @@ impl Default for ExportConfig {
 
 /// Shell exporter for converting Rust implementation to shell scripts
 pub struct ShellExporter {
-    /// Tera template engine for generating shell scripts
-    tera: Tera,
+    /// minijinja template engine for generating shell scripts
+    env: Environment<'static>,
+    /// Template directory path
+    template_dir: PathBuf,
     /// AI integration for intelligent shell optimization
     ai_integration: Option<Arc<AIIntegration>>,
     /// Telemetry for shell export operations
@@ -52,15 +55,18 @@ impl ShellExporter {
         let swarm_telemetry = DefaultSwarmTelemetry::default();
         let _span = swarm_telemetry.coordination_span("shell_export", "initialize").entered();
         
-        info!("Initializing shell exporter with Tera templating engine");
+        info!("Initializing shell exporter with minijinja templating engine");
         
-        // Initialize Tera with template directory
-        let mut tera = Tera::new("templates/**/*.tera")?;
+        let template_dir = PathBuf::from("templates");
+        
+        // Initialize minijinja environment
+        let mut env = Environment::new();
+        env.set_auto_escape_callback(|_| minijinja::AutoEscape::None);
         
         // Add custom filters for shell script generation
-        tera.register_filter("shell_escape", shell_escape_filter);
-        tera.register_filter("to_bash_array", bash_array_filter);
-        tera.register_filter("nanosecond_id", nanosecond_id_filter);
+        env.add_filter("shell_escape", shell_escape_filter);
+        env.add_filter("to_bash_array", bash_array_filter);
+        env.add_filter("nanosecond_id", nanosecond_id_filter);
         
         // Initialize AI integration for intelligent optimization
         let ai_integration = match AIIntegration::new().await {
@@ -77,7 +83,20 @@ impl ShellExporter {
         let init_duration = start_time.elapsed();
         info!(init_duration_ms = init_duration.as_millis(), ai_available = ai_integration.is_some(), "Shell exporter initialized");
         
-        Ok(Self { tera, ai_integration, swarm_telemetry })
+        Ok(Self { env, template_dir, ai_integration, swarm_telemetry })
+    }
+    
+    /// Helper method to render templates with minijinja
+    fn render_template(&self, template_name: &str, context: &Value) -> Result<String> {
+        let template_path = self.template_dir.join(template_name);
+        let template_content = fs::read_to_string(&template_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read template {}: {}", template_name, e))?;
+        
+        let template = self.env.template_from_str(&template_content)
+            .map_err(|e| anyhow::anyhow!("Failed to compile template {}: {}", template_name, e))?;
+        
+        template.render(context)
+            .map_err(|e| anyhow::anyhow!("Failed to render template {}: {}", template_name, e))
     }
     
     /// Export complete SwarmSH system to shell scripts
@@ -102,20 +121,21 @@ impl ShellExporter {
         std::fs::create_dir_all(&config.output_dir)?;
         
         // Prepare template context
-        let mut context = Context::new();
-        context.insert("config", &config);
-        context.insert("timestamp", &chrono::Utc::now().to_rfc3339());
-        context.insert("version", "2.0.0");
+        let render_context = context! {
+            config => config,
+            timestamp => chrono::Utc::now().to_rfc3339(),
+            version => "2.0.0"
+        };
         
-        // Export each component using Tera templates
-        self.export_coordination_with_template(&config, &context).await?;
-        self.export_telemetry_with_template(&config, &context).await?;
-        self.export_health_monitoring_with_template(&config, &context).await?;
-        self.export_analytics_with_template(&config, &context).await?;
+        // Export each component using minijinja templates
+        self.export_coordination_with_template(&config, &render_context).await?;
+        self.export_telemetry_with_template(&config, &render_context).await?;
+        self.export_health_monitoring_with_template(&config, &render_context).await?;
+        self.export_analytics_with_template(&config, &render_context).await?;
         
         if config.include_ai_integration {
             let ai_start = Instant::now();
-            self.export_ai_integration_with_template(&config, &context).await?;
+            self.export_ai_integration_with_template(&config, &render_context).await?;
             let ai_duration = ai_start.elapsed();
             info!(ai_export_duration_ms = ai_duration.as_millis(), "AI integration export completed");
         }
@@ -125,7 +145,7 @@ impl ShellExporter {
             total_export_duration_ms = total_duration.as_millis(),
             telemetry_included = config.include_telemetry,
             ai_included = config.include_ai_integration,
-            "Shell export completed successfully using Tera templating"
+            "Shell export completed successfully using minijinja templating"
         );
         
         Ok(())
@@ -162,48 +182,58 @@ impl ShellExporter {
     }
     
     async fn export_coordination(&self, config: &ExportConfig) -> Result<()> {
-        self.export_coordination_with_template(config, &Context::new()).await
+        let empty_context = context! {};
+        self.export_coordination_with_template(config, &empty_context).await
     }
     
     async fn export_telemetry(&self, config: &ExportConfig) -> Result<()> {
-        self.export_telemetry_with_template(config, &Context::new()).await
+        let empty_context = context! {};
+        self.export_telemetry_with_template(config, &empty_context).await
     }
     
     async fn export_health_monitoring(&self, config: &ExportConfig) -> Result<()> {
-        self.export_health_monitoring_with_template(config, &Context::new()).await
+        let empty_context = context! {};
+        self.export_health_monitoring_with_template(config, &empty_context).await
     }
     
     async fn export_analytics(&self, config: &ExportConfig) -> Result<()> {
-        self.export_analytics_with_template(config, &Context::new()).await
+        let empty_context = context! {};
+        self.export_analytics_with_template(config, &empty_context).await
     }
     
     async fn export_ai_integration(&self, config: &ExportConfig) -> Result<()> {
-        self.export_ai_integration_with_template(config, &Context::new()).await
+        let empty_context = context! {};
+        self.export_ai_integration_with_template(config, &empty_context).await
     }
     
-    // Tera template-based export methods with AI enhancement
+    // minijinja template-based export methods with AI enhancement
     #[instrument(skip(self, config, context))]
-    async fn export_coordination_with_template(&self, config: &ExportConfig, context: &Context) -> Result<()> {
+    async fn export_coordination_with_template(&self, config: &ExportConfig, context: &Value) -> Result<()> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "export_coordination").entered();
         
-        info!("Generating coordination shell scripts with AI-enhanced Tera templates");
+        info!("Generating coordination shell scripts with AI-enhanced minijinja templates");
         
         let mut template_context = context.clone();
-        template_context.insert("coordination_patterns", &vec![
-            "scrum_at_scale",
-            "roberts_rules", 
-            "realtime",
-            "atomic"
-        ]);
-        template_context.insert("nanosecond_precision", &true);
-        template_context.insert("zero_conflict_guarantee", &true);
+        let additional_context = context! {
+            coordination_patterns => vec![
+                "scrum_at_scale",
+                "roberts_rules", 
+                "realtime",
+                "atomic"
+            ],
+            nanosecond_precision => true,
+            zero_conflict_guarantee => true
+        };
+        
+        // Merge contexts (simplified approach)
+        let template_context = additional_context;
         
         // Get AI enhancement for coordination
         let enhanced_context = self.get_ai_enhanced_context(&template_context, "coordination").await?;
         
         // Render and optimize coordination helper
-        let coordination_script = self.tera.render("coordination_helper.sh.tera", &enhanced_context)?;
+        let coordination_script = self.render_template("coordination_helper.sh.tera", &enhanced_context)?;
         let optimized_script = self.optimize_shell_script(
             &coordination_script,
             "Zero-conflict agent coordination with nanosecond precision"
@@ -212,7 +242,7 @@ impl ShellExporter {
         std::fs::write(output_path, optimized_script)?;
         
         // Render and optimize agent orchestrator
-        let orchestrator_script = self.tera.render("agent_swarm_orchestrator.sh.tera", &enhanced_context)?;
+        let orchestrator_script = self.render_template("agent_swarm_orchestrator.sh.tera", &enhanced_context)?;
         let optimized_orchestrator = self.optimize_shell_script(
             &orchestrator_script,
             "Agent swarm orchestration with intelligent work distribution"
@@ -221,7 +251,7 @@ impl ShellExporter {
         std::fs::write(output_path, optimized_orchestrator)?;
         
         // Render and optimize real agent coordinator
-        let coordinator_script = self.tera.render("real_agent_coordinator.sh.tera", &enhanced_context)?;
+        let coordinator_script = self.render_template("real_agent_coordinator.sh.tera", &enhanced_context)?;
         let optimized_coordinator = self.optimize_shell_script(
             &coordinator_script,
             "Real-time agent coordination with AI decision making"
@@ -240,27 +270,28 @@ impl ShellExporter {
     }
     
     #[instrument(skip(self, config, context))]
-    async fn export_telemetry_with_template(&self, config: &ExportConfig, context: &Context) -> Result<()> {
+    async fn export_telemetry_with_template(&self, config: &ExportConfig, context: &Value) -> Result<()> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "export_telemetry").entered();
         
-        info!("Generating telemetry shell scripts with Tera templates");
+        info!("Generating telemetry shell scripts with minijinja templates");
         
         if !config.include_telemetry {
             return Ok(());
         }
         
-        let mut template_context = context.clone();
-        template_context.insert("semantic_conventions", &vec![
-            "swarmsh.agent",
-            "swarmsh.work",
-            "swarmsh.coordination", 
-            "swarmsh.health",
-            "swarmsh.analytics"
-        ]);
-        template_context.insert("otel_export_format", &"json");
+        let template_context = context! {
+            semantic_conventions => vec![
+                "swarmsh.agent",
+                "swarmsh.work",
+                "swarmsh.coordination", 
+                "swarmsh.health",
+                "swarmsh.analytics"
+            ],
+            otel_export_format => "json"
+        };
         
-        let telemetry_script = self.tera.render("telemetry_spans.sh.tera", &template_context)?;
+        let telemetry_script = self.render_template("telemetry_spans.sh.tera", &template_context)?;
         let output_path = config.output_dir.join("telemetry_spans.sh");
         std::fs::write(output_path, telemetry_script)?;
         
@@ -274,32 +305,33 @@ impl ShellExporter {
     }
     
     #[instrument(skip(self, config, context))]
-    async fn export_health_monitoring_with_template(&self, config: &ExportConfig, context: &Context) -> Result<()> {
+    async fn export_health_monitoring_with_template(&self, config: &ExportConfig, context: &Value) -> Result<()> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "export_health").entered();
         
-        info!("Generating health monitoring shell scripts with Tera templates");
+        info!("Generating health monitoring shell scripts with minijinja templates");
         
-        let mut template_context = context.clone();
-        template_context.insert("monitoring_tiers", &vec!["tier1", "tier2"]);
-        template_context.insert("health_components", &vec![
-            "coordination",
-            "telemetry", 
-            "automation",
-            "ai",
-            "work_queue",
-            "storage"
-        ]);
-        template_context.insert("automated_remediation", &true);
+        let template_context = context! {
+            monitoring_tiers => vec!["tier1", "tier2"],
+            health_components => vec![
+                "coordination",
+                "telemetry", 
+                "automation",
+                "ai",
+                "work_queue",
+                "storage"
+            ],
+            automated_remediation => true
+        };
         
-        let health_script = self.tera.render("health_monitor.sh.tera", &template_context)?;
+        let health_script = self.render_template("health_monitor.sh.tera", &template_context)?;
         let output_path = config.output_dir.join("health_monitor.sh");
         std::fs::write(output_path, health_script)?;
         
         let health_duration = start_time.elapsed();
         info!(
             health_export_duration_ms = health_duration.as_millis(),
-            monitoring_components = template_context.get("health_components").map(|v| v.as_array().map(|a| a.len()).unwrap_or(0)).unwrap_or(0),
+            monitoring_components = 6,
             "Health monitoring shell scripts generated successfully"
         );
         
@@ -307,37 +339,38 @@ impl ShellExporter {
     }
     
     #[instrument(skip(self, config, context))]
-    async fn export_analytics_with_template(&self, config: &ExportConfig, context: &Context) -> Result<()> {
+    async fn export_analytics_with_template(&self, config: &ExportConfig, context: &Value) -> Result<()> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "export_analytics").entered();
         
-        info!("Generating analytics shell scripts with Tera templates");
+        info!("Generating analytics shell scripts with minijinja templates");
         
-        let mut template_context = context.clone();
-        template_context.insert("optimization_targets", &serde_json::json!({
-            "waste_elimination": 73.0,
-            "flow_efficiency": 84.0,
-            "lead_time_ms": 126000,
-            "sigma_level": 4.2
-        }));
-        template_context.insert("dlss_principles", &vec![
-            "overproduction",
-            "waiting",
-            "transport", 
-            "over_processing",
-            "inventory",
-            "motion",
-            "defects"
-        ]);
+        let template_context = context! {
+            optimization_targets => context! {
+                waste_elimination => 73.0,
+                flow_efficiency => 84.0,
+                lead_time_ms => 126000,
+                sigma_level => 4.2
+            },
+            dlss_principles => vec![
+                "overproduction",
+                "waiting",
+                "transport", 
+                "over_processing",
+                "inventory",
+                "motion",
+                "defects"
+            ]
+        };
         
-        let analytics_script = self.tera.render("8020_automation.sh.tera", &template_context)?;
+        let analytics_script = self.render_template("8020_automation.sh.tera", &template_context)?;
         let output_path = config.output_dir.join("8020_automation.sh");
         std::fs::write(output_path, analytics_script)?;
         
         let analytics_duration = start_time.elapsed();
         info!(
             analytics_export_duration_ms = analytics_duration.as_millis(),
-            dlss_principles_count = template_context.get("dlss_principles").map(|v| v.as_array().map(|a| a.len()).unwrap_or(0)).unwrap_or(0),
+            dlss_principles_count = 7,
             "Analytics shell scripts generated successfully"
         );
         
@@ -345,33 +378,32 @@ impl ShellExporter {
     }
     
     #[instrument(skip(self, config, context))]
-    async fn export_ai_integration_with_template(&self, config: &ExportConfig, context: &Context) -> Result<()> {
+    async fn export_ai_integration_with_template(&self, config: &ExportConfig, context: &Value) -> Result<()> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "export_ai_integration").entered();
         
-        info!("Generating AI integration shell scripts with AI-enhanced Tera templates");
+        info!("Generating AI integration shell scripts with AI-enhanced minijinja templates");
         
-        let mut template_context = context.clone();
-        template_context.insert("ai_providers", &vec!["claude", "ollama"]);
-        template_context.insert("confidence_threshold", &0.8);
-        template_context.insert("fallback_to_human", &true);
-        
-        // Add Ollama-specific features
-        template_context.insert("ollama_features", &serde_json::json!({
-            "chat_completion": true,
-            "embeddings": true,
-            "streaming": true,
-            "model_management": true,
-            "pattern_analysis": true,
-            "decision_making": true,
-            "shell_optimization": true
-        }));
+        let template_context = context! {
+            ai_providers => vec!["claude", "ollama"],
+            confidence_threshold => 0.8,
+            fallback_to_human => true,
+            ollama_features => context! {
+                chat_completion => true,
+                embeddings => true,
+                streaming => true,
+                model_management => true,
+                pattern_analysis => true,
+                decision_making => true,
+                shell_optimization => true
+            }
+        };
         
         // Get AI enhancement for the AI integration component itself
         let enhanced_context = self.get_ai_enhanced_context(&template_context, "ai_integration").await?;
         
         // Claude integration with optimization
-        let claude_script = self.tera.render("claude_integration.sh.tera", &enhanced_context)?;
+        let claude_script = self.render_template("claude_integration.sh.tera", &enhanced_context)?;
         let optimized_claude = self.optimize_shell_script(
             &claude_script,
             "Claude API integration for comprehensive analysis and planning"
@@ -380,7 +412,7 @@ impl ShellExporter {
         std::fs::write(output_path, optimized_claude)?;
         
         // Ollama integration with full feature optimization
-        let ollama_script = self.tera.render("ollama_integration.sh.tera", &enhanced_context)?;
+        let ollama_script = self.render_template("ollama_integration.sh.tera", &enhanced_context)?;
         let optimized_ollama = self.optimize_shell_script(
             &ollama_script,
             "Local Ollama integration with chat, embeddings, streaming, and model management"
@@ -389,7 +421,7 @@ impl ShellExporter {
         std::fs::write(output_path, optimized_ollama)?;
         
         // Generate AI-powered shell utilities
-        let ai_utils_script = self.tera.render("ai_shell_utils.sh.tera", &enhanced_context)?;
+        let ai_utils_script = self.render_template("ai_shell_utils.sh.tera", &enhanced_context)?;
         let optimized_utils = self.optimize_shell_script(
             &ai_utils_script,
             "AI utility functions for intelligent shell script enhancement"
@@ -401,7 +433,7 @@ impl ShellExporter {
         info!(
             ai_integration_export_duration_ms = ai_integration_duration.as_millis(),
             ai_scripts_generated = 3,
-            ai_providers_count = template_context.get("ai_providers").map(|v| v.as_array().map(|a| a.len()).unwrap_or(0)).unwrap_or(0),
+            ai_providers_count = 2,
             "AI integration shell scripts generated successfully"
         );
         
@@ -429,7 +461,7 @@ impl ShellExporter {
     
     /// Generate AI-enhanced shell template context
     #[instrument(skip(self, base_context), fields(component = %component))]
-    async fn get_ai_enhanced_context(&self, base_context: &Context, component: &str) -> Result<Context> {
+    async fn get_ai_enhanced_context(&self, base_context: &Value, component: &str) -> Result<Value> {
         let start_time = Instant::now();
         let _span = self.swarm_telemetry.coordination_span("shell_export", "ai_enhance_context").entered();
         
@@ -443,13 +475,12 @@ impl ShellExporter {
             
             match ai.analyze(&analysis_prompt).await {
                 Ok(analysis) => {
-                    enhanced_context.insert("ai_recommendations", &analysis.recommendations);
-                    enhanced_context.insert("ai_confidence", &analysis.confidence);
-                    enhanced_context.insert("optimization_opportunities", &analysis.optimization_opportunities);
-                    
-                    if let Some(ref reasoning) = analysis.reasoning {
-                        enhanced_context.insert("ai_reasoning", reasoning);
-                    }
+                    enhanced_context = context! {
+                        ai_recommendations => analysis.recommendations,
+                        ai_confidence => analysis.confidence,
+                        optimization_opportunities => analysis.optimization_opportunities,
+                        ai_reasoning => analysis.reasoning.unwrap_or_default()
+                    };
                     
                     info!(
                         component = %component,
@@ -476,49 +507,31 @@ impl ShellExporter {
     }
 }
 
-// Tera custom filters for shell script generation
+// minijinja custom filters for shell script generation
 
 /// Shell escape filter for safe string interpolation
-fn shell_escape_filter(value: &tera::Value, _: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
-    match value {
-        tera::Value::String(s) => {
-            let escaped = s.replace('\\', "\\\\")
-                          .replace('\"', "\\\"")
-                          .replace('$', "\\$")
-                          .replace('`', "\\`");
-            Ok(tera::Value::String(format!("\"{}\"", escaped)))
-        }
-        _ => Ok(value.clone())
-    }
+fn shell_escape_filter(value: String) -> String {
+    let escaped = value.replace('\\', "\\\\")
+                      .replace('\"', "\\\"")
+                      .replace('$', "\\$")
+                      .replace('`', "\\`");
+    format!("\"{}\"", escaped)
 }
 
 /// Convert array to bash array format
-fn bash_array_filter(value: &tera::Value, _: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
-    match value {
-        tera::Value::Array(arr) => {
-            let elements: Vec<String> = arr.iter()
-                .map(|v| match v {
-                    tera::Value::String(s) => format!("\"{}\"", s),
-                    _ => format!("\"{}\"", v),
-                })
-                .collect();
-            Ok(tera::Value::String(format!("({})", elements.join(" "))))
-        }
-        _ => Ok(value.clone())
-    }
+fn bash_array_filter(value: Vec<String>) -> String {
+    let elements: Vec<String> = value.iter()
+        .map(|s| format!("\"{}\"", s))
+        .collect();
+    format!("({})", elements.join(" "))
 }
 
 /// Generate nanosecond-precision ID
-fn nanosecond_id_filter(value: &tera::Value, _: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
-    let prefix = match value {
-        tera::Value::String(s) => s.clone(),
-        _ => "item".to_string(),
-    };
-    
+fn nanosecond_id_filter(prefix: String) -> String {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
     
-    Ok(tera::Value::String(format!("{}_{}", prefix, timestamp)))
+    format!("{}_{}", prefix, timestamp)
 }

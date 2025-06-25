@@ -77,6 +77,7 @@ pub struct WorktreeManager {
 
 impl WorktreeManager {
     /// Create new worktree manager
+    #[instrument(skip(telemetry), fields(base_path = %base_path.display()))]
     pub async fn new(
         base_path: PathBuf,
         telemetry: Arc<crate::TelemetryManager>,
@@ -423,12 +424,14 @@ impl WorktreeManager {
     }
 
     /// List all worktrees
+    #[instrument(skip(self))]
     pub async fn list_worktrees(&self) -> Vec<WorktreeState> {
         let worktrees = self.worktrees.read().await;
         worktrees.values().cloned().collect()
     }
 
     /// List worktree names only
+    #[instrument(skip(self))]
     pub async fn list_worktree_names(&self) -> SwarmResult<Vec<String>> {
         let worktrees = self.worktrees.read().await;
         Ok(worktrees.keys().cloned().collect())
