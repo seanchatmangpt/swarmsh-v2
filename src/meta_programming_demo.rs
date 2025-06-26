@@ -27,47 +27,54 @@ swarm_agent_pattern! {
     capacity: 1.0,
     patterns: ["scrum_at_scale", "atomic", "realtime"],
     routines: {
-        demonstrate_meta_features => |agent: &DemoAgentPattern| async move {
-            println!("🚀 Demonstrating meta-programming features for agent: {}", agent.agent_id);
-            
-            // Use generated attributes
-            // Temporarily disabled for compilation
-            // use crate::generated::meta_attributes::agent_attributes::*;
-            tracing::info!(
-                attribute = "agent.id", // AGENT_ID,
-                value = %agent.agent_id,
-                "Using meta-generated attribute constant"
-            );
-            
-            Ok(())
+        demonstrate_meta_features => |agent: &DemoAgentPattern| {
+            let agent_id = agent.agent_id.clone();
+            async move {
+                println!("🚀 Demonstrating meta-programming features for agent: {}", agent_id);
+                
+                // Use generated attributes
+                // Temporarily disabled for compilation
+                // use crate::generated::meta_attributes::agent_attributes::*;
+                tracing::info!(
+                    attribute = "agent.id", // AGENT_ID,
+                    value = %agent_id,
+                    "Using meta-generated attribute constant"
+                );
+                
+                Ok(())
+            }
         },
         
-        ai_enhanced_routine => |agent: &DemoAgentPattern| async move {
-            println!("🤖 AI-enhanced routine execution");
-            
-            // Simulate AI-enhanced decision making
-            if let Some(ref ai) = agent.ai_integration {
-                let context = serde_json::json!({
-                    "agent_id": agent.agent_id,
-                    "routine": "ai_enhanced_routine",
-                    "meta_programming": true
-                });
+        ai_enhanced_routine => |agent: &DemoAgentPattern| {
+            let agent_id = agent.agent_id.clone();
+            let ai_integration = agent.ai_integration.clone();
+            async move {
+                println!("🤖 AI-enhanced routine execution");
                 
-                match ai.make_decision(&context, "routine_optimization").await {
-                    Ok(decision) => {
-                        println!("✅ AI decision: {} (confidence: {:.2}%)", 
-                                decision.action, decision.confidence * 100.0);
-                    }
-                    Err(e) => {
-                        println!("⚠️ AI decision failed: {}", e);
+                // Simulate AI-enhanced decision making
+                if let Some(ai) = ai_integration {
+                    let context = serde_json::json!({
+                        "agent_id": agent_id,
+                        "routine": "ai_enhanced_routine",
+                        "meta_programming": true
+                    });
+                    
+                    match ai.make_decision(&context, "routine_optimization").await {
+                        Ok(decision) => {
+                            println!("✅ AI decision: {} (confidence: {:.2}%)", 
+                                    decision.action, decision.confidence * 100.0);
+                        }
+                        Err(e) => {
+                            println!("⚠️ AI decision failed: {}", e);
+                        }
                     }
                 }
+                
+                Ok(())
             }
-            
-            Ok(())
         },
         
-        dlss_optimized_routine => |agent: &DemoAgentPattern| async move {
+        dlss_optimized_routine => |_agent: &DemoAgentPattern| async move {
             println!("📊 DLSS-optimized routine execution");
             
             // Use DLSS optimization macro
@@ -94,14 +101,14 @@ coordination_pattern! {
     precision: NANOSECOND_PRECISION,
     conflict_resolution: "zero_conflict",
     implementations: {
-        meta_coordinate => |pattern: &MetaDemoCoordinationPattern<NANOSECOND_PRECISION>| async move {
+        meta_coordinate => |_pattern: &MetaDemoCoordinationPattern<NANOSECOND_PRECISION>| async move {
             println!("⚡ Meta-programmed coordination with {}ns precision", 
-                    pattern.precision_ns());
+                    NANOSECOND_PRECISION);
             
             // Use coordination_atomic macro
             coordination_atomic! {
                 operation: "meta_demonstration",
-                epoch: pattern.timestamp(),
+                epoch: MetaDemoCoordinationPattern::<NANOSECOND_PRECISION>::timestamp(),
                 participants: ["demo_agent_1", "demo_agent_2"],
                 body: {
                     println!("🔒 Atomic coordination operation executing");
@@ -115,22 +122,22 @@ coordination_pattern! {
             }
         },
         
-        high_performance_sync => |pattern: &MetaDemoCoordinationPattern<NANOSECOND_PRECISION>| async move {
+        high_performance_sync => |_pattern: &MetaDemoCoordinationPattern<NANOSECOND_PRECISION>| async move {
             println!("🚄 High-performance synchronization");
             
             // Use compile-time optimized coordination
-            let start_time = pattern.timestamp();
+            let start_time = MetaDemoCoordinationPattern::<NANOSECOND_PRECISION>::timestamp();
             
             // Simulated high-frequency coordination
             for i in 0..10 {
-                let timestamp = pattern.timestamp();
+                let timestamp = MetaDemoCoordinationPattern::<NANOSECOND_PRECISION>::timestamp();
                 println!("  📡 Sync pulse {}: {}ns", i + 1, timestamp);
                 
                 // Nanosecond precision delay
                 tokio::time::sleep(tokio::time::Duration::from_nanos(100)).await;
             }
             
-            let end_time = pattern.timestamp();
+            let end_time = MetaDemoCoordinationPattern::<NANOSECOND_PRECISION>::timestamp();
             let duration_ns = end_time - start_time;
             
             println!("✅ High-performance sync completed in {}ns", duration_ns);
@@ -145,7 +152,7 @@ pub async fn demonstrate_const_generics() -> SwarmResult<()> {
     println!("================================================");
     
     // Create compile-time optimized coordination engines
-    let scrum_coordinator: ScrumCoordinator<5> = ScrumCoordinator::new();
+    let _scrum_coordinator: ScrumCoordinator<5> = ScrumCoordinator::new();
     let atomic_coordinator: AtomicCoordinator<3> = AtomicCoordinator::new();
     
     println!("🏗️ Created coordination engines:");
@@ -272,7 +279,7 @@ pub async fn demonstrate_span_metaprog() -> SwarmResult<()> {
             }
         };
         */
-        let step_spans = vec![];
+        let step_spans: Vec<tracing::Span> = vec![];
         
         async move {
             println!("🔄 Executing workflow with {} steps", step_spans.len());
@@ -299,7 +306,7 @@ pub async fn demonstrate_ai_enhancement() -> SwarmResult<()> {
     // use crate::swarm_ai_span;
     
     // Create AI-enhanced span
-    let ai_context = serde_json::json!({
+    let _ai_context = serde_json::json!({
         "operation": "meta_programming_demo",
         "confidence": 0.95,
         "model": "meta_llama",
@@ -336,10 +343,10 @@ pub async fn run_meta_programming_demo() -> SwarmResult<()> {
     let demo_agent = DemoAgentPattern::new("meta_demo_agent".to_string());
     
     println!("\n👤 Created meta-programmed agent:");
-    println!("  ID: {}", demo_agent.agent_id());
-    println!("  Role: {}", demo_agent.role());
-    println!("  Capacity: {}", demo_agent.capacity());
-    println!("  Patterns: {:?}", demo_agent.coordination_patterns());
+    println!("  ID: {}", demo_agent.agent_id);
+    println!("  Role: {}", demo_agent.role);
+    println!("  Capacity: {}", demo_agent.capacity);
+    println!("  Patterns: {:?}", demo_agent.patterns);
     println!("  Available routines: {:?}", DemoAgentPattern::available_routines());
     
     // Execute agent routines
@@ -378,8 +385,8 @@ mod tests {
         // This would normally run the full demo
         // For now, just test that the demo agent can be created
         let demo_agent = DemoAgentPattern::new("test_agent".to_string());
-        assert_eq!(demo_agent.role(), "meta_programming_demo");
-        assert_eq!(demo_agent.capacity(), 1.0);
+        assert_eq!(demo_agent.role, "meta_programming_demo");
+        assert_eq!(demo_agent.capacity, 1.0);
     }
     
     #[test]

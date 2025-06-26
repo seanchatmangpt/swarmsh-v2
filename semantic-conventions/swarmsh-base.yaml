@@ -192,6 +192,48 @@ groups:
         brief: 'Whether streaming mode is enabled'
         examples: [true, false]
         
+  # Prompt management attributes
+  - id: swarmsh.prompt
+    type: attribute_group
+    brief: 'AI prompt usage and coordination attributes'
+    note: 'Attributes for tracking AI prompt usage in coordination patterns'
+    attributes:
+      - id: swarmsh.prompt.pattern
+        type: string
+        brief: 'Coordination pattern type'
+        examples: ['scrum_at_scale', 'roberts_rules', 'realtime', 'atomic']
+        requirement_level: required
+        
+      - id: swarmsh.prompt.operation
+        type: string
+        brief: 'Specific operation within the pattern'
+        examples: ['sprint_planning', 'daily_standup', 'sprint_review', 'retrospective']
+        requirement_level: required
+        
+      - id: swarmsh.prompt.ai_provider
+        type: string
+        brief: 'AI provider used for prompt processing'
+        examples: ['ollama', 'claude', 'openai', 'local_model']
+        requirement_level: required
+        
+      - id: swarmsh.prompt.model_name
+        type: string
+        brief: 'Specific AI model identifier'
+        examples: ['llama2:latest', 'claude-3-sonnet', 'gpt-4', 'local-llm']
+        requirement_level: recommended
+        
+      - id: swarmsh.prompt.coordination_decision
+        type: string
+        brief: 'Primary coordination decision made'
+        examples: ['approve_sprint_plan', 'escalate_impediment', 'approve_motion', 'table_discussion']
+        requirement_level: required
+        
+      - id: swarmsh.prompt.implementation_priority
+        type: string
+        brief: 'Priority level for implementing the decision'
+        examples: ['immediate', 'high', 'medium', 'low', 'deferred']
+        requirement_level: recommended
+        
 # Span definitions
   - id: swarmsh.agent.lifecycle
     type: span

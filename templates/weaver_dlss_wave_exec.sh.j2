@@ -1,0 +1,403 @@
+#!/usr/bin/env bash
+# Weaver DLSS Wave Execution
+# Wave coordination with quality gate checking
+
+set -euo pipefail
+
+# Source dependencies
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "${SCRIPT_DIR}/telemetry_emitter.sh" 2>/dev/null || true
+
+# Configuration
+WAVE_STATE_DIR="${WAVE_STATE_DIR:-/tmp/weaver/waves}"
+WAVE_MAX_SIZE="${WAVE_MAX_SIZE:-16}"
+WAVE_TIMEOUT="${WAVE_TIMEOUT:-300}"  # 5 minutes per wave
+QUALITY_GATE_THRESHOLD="${QUALITY_GATE_THRESHOLD:-0.9}"  # 90% pass rate
+
+# Ensure state directory exists
+mkdir -p "${WAVE_STATE_DIR}" 2>/dev/null || true
+
+# DLSS metrics
+declare -A DLSS_METRICS=(
+    ["lead_time"]="Time from commit to production"
+    ["cycle_time"]="Time from work start to completion"
+    ["flow_efficiency"]="Value-add time / Total time"
+    ["defect_rate"]="Defects per unit of work"
+    ["rework_percentage"]="Percentage of work requiring rework"
+)
+
+# Quality gates
+declare -A QUALITY_GATES=(
+    ["test_coverage"]="90"
+    ["performance_regression"]="false"
+    ["security_scan"]="pass"
+    ["code_review"]="approved"
+    ["documentation"]="complete"
+)
+
+# Initialize wave state
+init_wave_state() {
+    local wave_id="$1"
+    local spec_file="$2"
+    local wave_size="$3"
+    local correlation_id="${4:-$(uuidgen 2>/dev/null || echo "wave-$$")}"
+    
+    emit_span_start "dlss_wave_init" "${correlation_id}"
+    
+    local state_file="${WAVE_STATE_DIR}/${wave_id}.state"
+    cat > "${state_file}" << EOF
+{
+  "wave_id": "${wave_id}",
+  "spec_file": "${spec_file}",
+  "wave_size": ${wave_size},
+  "status": "INITIALIZING",
+  "start_time": $(date +%s),
+  "tasks": [],
+  "metrics": {
+    "completed": 0,
+    "failed": 0,
+    "quality_score": 0.0
+  },
+  "correlation_id": "${correlation_id}"
+}
+EOF
+    
+    echo "[WAVE ${wave_id}] Initialized with size ${wave_size}"
+    emit_span_end "dlss_wave_init" "${correlation_id}"
+}
+
+# Calculate DLSS metrics
+calculate_dlss_metrics() {
+    local wave_id="$1"
+    local correlation_id="${2:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "calculate_dlss_metrics" "${correlation_id}"
+    
+    echo "[WAVE ${wave_id}] Calculating DLSS metrics..."
+    
+    # Mock metrics calculation
+    local lead_time=$((RANDOM % 100 + 50))
+    local cycle_time=$((RANDOM % 50 + 20))
+    local flow_efficiency=$(awk -v ct="${cycle_time}" -v lt="${lead_time}" \
+        'BEGIN { printf "%.2f", ct / lt }')
+    local defect_rate=$(awk 'BEGIN { printf "%.2f", rand() * 0.1 }')
+    local rework_percentage=$(awk 'BEGIN { printf "%.2f", rand() * 0.15 }')
+    
+    cat << EOF
+{
+  "lead_time": ${lead_time},
+  "cycle_time": ${cycle_time},
+  "flow_efficiency": ${flow_efficiency},
+  "defect_rate": ${defect_rate},
+  "rework_percentage": ${rework_percentage}
+}
+EOF
+    
+    emit_span_end "calculate_dlss_metrics" "${correlation_id}"
+}
+
+# Execute single task in wave
+execute_wave_task() {
+    local wave_id="$1"
+    local task_id="$2"
+    local spec_file="$3"
+    local correlation_id="${4:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "wave_task_execution" "${correlation_id}"
+    
+    echo "[TASK ${task_id}] Starting execution..."
+    
+    # Simulate task execution
+    local execution_time=$((RANDOM % 10 + 5))
+    sleep "${execution_time}"
+    
+    # Check quality gates
+    local gates_passed=true
+    for gate in "${!QUALITY_GATES[@]}"; do
+        local expected="${QUALITY_GATES[$gate]}"
+        local actual="pass"  # Mock result
+        
+        if [[ "${actual}" != "${expected}" && "${expected}" != "false" ]]; then
+            gates_passed=false
+            echo "[TASK ${task_id}] Quality gate failed: ${gate}"
+        fi
+    done
+    
+    # Generate task result
+    local task_result="SUCCESS"
+    if [[ "${gates_passed}" != "true" ]]; then
+        task_result="FAILED"
+    fi
+    
+    emit_span_end "wave_task_execution" "${correlation_id}"
+    
+    echo "${task_result}"
+}
+
+# Monitor wave progress
+monitor_wave_progress() {
+    local wave_id="$1"
+    local wave_size="$2"
+    local pids=("${@:3}")
+    local correlation_id="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "monitor-$$")}"
+    
+    emit_span_start "monitor_wave_progress" "${correlation_id}"
+    
+    echo "[WAVE ${wave_id}] Monitoring ${#pids[@]} tasks..."
+    
+    local completed=0
+    local failed=0
+    
+    # Monitor with timeout
+    local start_time=$(date +%s)
+    while [[ ${completed} -lt ${#pids[@]} ]]; do
+        local current_time=$(date +%s)
+        local elapsed=$((current_time - start_time))
+        
+        if [[ ${elapsed} -gt ${WAVE_TIMEOUT} ]]; then
+            echo "[WAVE ${wave_id}] Timeout reached after ${elapsed}s"
+            # Kill remaining processes
+            for pid in "${pids[@]}"; do
+                if kill -0 "${pid}" 2>/dev/null; then
+                    kill -TERM "${pid}"
+                fi
+            done
+            break
+        fi
+        
+        # Check process status
+        for i in "${!pids[@]}"; do
+            local pid="${pids[$i]}"
+            if [[ -n "${pid}" ]] && ! kill -0 "${pid}" 2>/dev/null; then
+                wait "${pid}"
+                local exit_code=$?
+                
+                if [[ ${exit_code} -eq 0 ]]; then
+                    echo "[WAVE ${wave_id}] Task $((i+1)) completed successfully"
+                else
+                    echo "[WAVE ${wave_id}] Task $((i+1)) failed with code ${exit_code}"
+                    failed=$((failed + 1))
+                fi
+                
+                completed=$((completed + 1))
+                unset pids[$i]
+            fi
+        done
+        
+        # Progress update
+        local progress=$((completed * 100 / wave_size))
+        echo -ne "\r[WAVE ${wave_id}] Progress: ${progress}% (${completed}/${wave_size})"
+        
+        sleep 1
+    done
+    
+    echo ""  # New line after progress
+    
+    emit_span_end "monitor_wave_progress" "${correlation_id}"
+    
+    echo "${completed}:${failed}"
+}
+
+# Apply quality gates to wave
+apply_wave_quality_gates() {
+    local wave_id="$1"
+    local completed="$2"
+    local failed="$3"
+    local wave_size="$4"
+    local correlation_id="${5:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "apply_wave_quality_gates" "${correlation_id}"
+    
+    echo "[WAVE ${wave_id}] Applying quality gates..."
+    
+    local success_rate=$(awk -v comp="${completed}" -v fail="${failed}" -v size="${wave_size}" \
+        'BEGIN { printf "%.2f", (comp - fail) / size }')
+    
+    echo "  - Success rate: ${success_rate} (threshold: ${QUALITY_GATE_THRESHOLD})"
+    
+    local gates_passed=true
+    if (( $(echo "${success_rate} < ${QUALITY_GATE_THRESHOLD}" | bc -l) )); then
+        echo "  - FAILED: Success rate below threshold"
+        gates_passed=false
+    fi
+    
+    # Check DLSS metrics
+    local metrics=$(calculate_dlss_metrics "${wave_id}" "${correlation_id}")
+    local flow_efficiency=$(echo "${metrics}" | grep -o '"flow_efficiency": [0-9.]*' | awk '{print $2}')
+    
+    if (( $(echo "${flow_efficiency} < 0.3" | bc -l) )); then
+        echo "  - WARNING: Low flow efficiency (${flow_efficiency})"
+    fi
+    
+    emit_span_end "apply_wave_quality_gates" "${correlation_id}"
+    
+    echo "${gates_passed}"
+}
+
+# Execute DLSS wave
+execute_dlss_wave() {
+    local wave_id="${1:-wave-$(date +%s)}"
+    local spec_file="${2:-spec.yaml}"
+    local wave_size="${3:-8}"
+    local output_dir="${4:-./output}"
+    local correlation_id="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "wave-$$")}"
+    
+    echo "=== DLSS Wave Execution ==="
+    echo "Wave ID: ${wave_id}"
+    echo "Specification: ${spec_file}"
+    echo "Wave size: ${wave_size}"
+    echo "Output: ${output_dir}"
+    echo ""
+    
+    # Validate wave size
+    if [[ ${wave_size} -gt ${WAVE_MAX_SIZE} ]]; then
+        echo "Error: Wave size ${wave_size} exceeds maximum ${WAVE_MAX_SIZE}"
+        return 1
+    fi
+    
+    # Initialize wave
+    init_wave_state "${wave_id}" "${spec_file}" "${wave_size}" "${correlation_id}"
+    
+    # Launch tasks in parallel
+    echo "Launching ${wave_size} parallel tasks..."
+    local pids=()
+    for ((i=1; i<=wave_size; i++)); do
+        local task_id="${wave_id}-task-${i}"
+        (
+            result=$(execute_wave_task "${wave_id}" "${task_id}" "${spec_file}" "${correlation_id}")
+            echo "${result}" > "${WAVE_STATE_DIR}/${task_id}.result"
+        ) &
+        pids+=($!)
+    done
+    
+    # Monitor progress
+    local result=$(monitor_wave_progress "${wave_id}" "${wave_size}" "${pids[@]}")
+    IFS=':' read -r completed failed <<< "${result}"
+    
+    # Apply quality gates
+    local gates_passed=$(apply_wave_quality_gates "${wave_id}" "${completed}" "${failed}" "${wave_size}" "${correlation_id}")
+    
+    # Generate wave report
+    echo ""
+    echo "=== Wave Report ==="
+    echo "Total tasks: ${wave_size}"
+    echo "Completed: ${completed}"
+    echo "Failed: ${failed}"
+    echo "Success rate: $(awk -v c="${completed}" -v f="${failed}" -v s="${wave_size}" \
+        'BEGIN { printf "%.1f%%", ((c - f) / s) * 100 }')"
+    echo "Quality gates: ${gates_passed}"
+    
+    # Generate output
+    mkdir -p "${output_dir}"
+    cat > "${output_dir}/${wave_id}_report.json" << EOF
+{
+  "wave_id": "${wave_id}",
+  "total_tasks": ${wave_size},
+  "completed": ${completed},
+  "failed": ${failed},
+  "quality_gates_passed": ${gates_passed},
+  "dlss_metrics": $(calculate_dlss_metrics "${wave_id}" "${correlation_id}")
+}
+EOF
+    
+    # Export telemetry
+    export_spans_to_collector
+    
+    # Return success/failure
+    [[ "${gates_passed}" == "true" ]] && return 0 || return 1
+}
+
+# 80/20 optimization analyzer
+analyze_8020_opportunities() {
+    local project_dir="$1"
+    local correlation_id="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "8020-$$")}"
+    
+    emit_span_start "analyze_8020_opportunities" "${correlation_id}"
+    
+    echo "=== 80/20 Analysis ==="
+    echo "Analyzing: ${project_dir}"
+    echo ""
+    
+    # Mock analysis - in real implementation would analyze codebase
+    cat << EOF
+High-Value Opportunities Detected:
+1. Feature: Automated test generation
+   - Impact: High (affects 80% of development time)
+   - Effort: Medium (20% of implementation work)
+   - ROI Score: 4.0
+
+2. Feature: Performance optimization
+   - Impact: High (improves 70% of user workflows)
+   - Effort: Low (15% of implementation work)
+   - ROI Score: 4.7
+
+3. Feature: API documentation
+   - Impact: Medium (helps 60% of integrations)
+   - Effort: Low (10% of implementation work)
+   - ROI Score: 6.0
+
+4. Feature: Error handling improvements
+   - Impact: High (reduces 75% of support tickets)
+   - Effort: Medium (25% of implementation work)
+   - ROI Score: 3.0
+
+Recommended implementation order: 3, 2, 1, 4
+EOF
+    
+    emit_span_end "analyze_8020_opportunities" "${correlation_id}"
+}
+
+# Command dispatcher
+case "${1:-help}" in
+    execute)
+        shift
+        execute_dlss_wave "$@"
+        ;;
+    analyze)
+        shift
+        analyze_8020_opportunities "$@"
+        ;;
+    report)
+        if [[ -n "${2:-}" ]]; then
+            cat "${WAVE_STATE_DIR}/${2}.state" 2>/dev/null | jq . || echo "Wave not found: $2"
+        else
+            echo "Usage: $0 report <wave_id>"
+            exit 1
+        fi
+        ;;
+    list)
+        echo "Wave executions:"
+        ls -la "${WAVE_STATE_DIR}"/*.state 2>/dev/null | while read -r line; do
+            local file=$(echo "${line}" | awk '{print $NF}')
+            local wave_id=$(basename "${file}" .state)
+            echo "  - ${wave_id}"
+        done
+        ;;
+    help|*)
+        cat << EOF
+Weaver DLSS Wave Execution
+
+Usage: $0 <command> [options]
+
+Commands:
+  execute [wave_id] [spec] [size] [output]   Execute DLSS wave
+  analyze <project_dir>                       Analyze 80/20 opportunities
+  report <wave_id>                           Show wave report
+  list                                       List all waves
+  help                                       Show this help
+
+Environment Variables:
+  WAVE_STATE_DIR              State directory (default: /tmp/weaver/waves)
+  WAVE_MAX_SIZE              Max wave size (default: 16)
+  WAVE_TIMEOUT               Wave timeout in seconds (default: 300)
+  QUALITY_GATE_THRESHOLD     Success rate threshold (default: 0.9)
+
+Examples:
+  $0 execute my-wave spec.yaml 8 ./output
+  $0 analyze /path/to/project
+  $0 report my-wave
+  $0 list
+
+EOF
+        ;;
+esac

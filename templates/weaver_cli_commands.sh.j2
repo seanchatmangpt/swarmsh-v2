@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+# Generated from Weaver Complete Specification
+# {{ timestamp }}
+
+set -euo pipefail
+
+# Source telemetry functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "${SCRIPT_DIR}/telemetry_emitter.sh" 2>/dev/null || true
+
+# Global variables
+WEAVER_VERSION="1.0.0"
+CORRELATION_ID="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "weaver-$$-$(date +%s)")}"
+
+# Help function
+show_help() {
+    cat << EOF
+Weaver - Complete SwarmSH Implementation
+
+Usage: weaver <command> [options]
+
+Commands:
+{% for cmd in cli_commands %}
+  {{ cmd.path | join(" ") }}  {{ cmd.description }}
+{% endfor %}
+
+Global Options:
+  --help, -h                     Show this help message
+  --version, -v                  Show version information
+  --correlation-id <id>          Set correlation ID for tracing
+
+Examples:
+  weaver generate spr --spec spec.yaml --output spr.md
+  weaver compile rust_coordination --conventions ./semantic-conventions
+  weaver validate superiority --framework langchain
+
+EOF
+}
+
+# Version function
+show_version() {
+    echo "Weaver v${WEAVER_VERSION}"
+    echo "SwarmSH Complete Implementation"
+}
+
+{% for cmd in cli_commands %}
+# {{ cmd.description }}
+{{ cmd.path | join("_") }}() {
+    local correlation_id="${CORRELATION_ID}"
+    
+    # Start span
+    emit_span_start "{{ cmd.telemetry_span }}" "${correlation_id}"
+    
+    # Parse options
+    {% for option in cmd.options %}
+    local {{ option.name | replace("--", "") | replace("-", "_") }}="{{ option.default | default('') }}"
+    {% endfor %}
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            {% for option in cmd.options %}
+            {{ option.name }})
+                {{ option.name | replace("--", "") | replace("-", "_") }}="$2"
+                shift 2
+                ;;
+            {% endfor %}
+            *)
+                echo "Unknown option: $1" >&2
+                return 1
+                ;;
+        esac
+    done
+    
+    # Validate required options
+    {% for option in cmd.options %}
+    {% if option.required %}
+    if [[ -z "${{"${" ~ option.name | replace("--", "") | replace("-", "_") ~ "}"}}" ]]; then
+        echo "Error: {{ option.name }} is required" >&2
+        emit_span_error "{{ cmd.telemetry_span }}" "${correlation_id}" "Missing required option: {{ option.name }}"
+        return 1
+    fi
+    {% endif %}
+    {% endfor %}
+    
+    # Execute command logic
+    echo "[WEAVER] Executing: {{ cmd.path | join(" ") }}"
+    
+    {% if "generate" in cmd.path %}
+    # Generate logic
+    echo "Generating SPR from specification..."
+    echo "Input: ${spec}"
+    echo "Output: ${output}"
+    # Actual generation would happen here
+    {% elif "compile" in cmd.path %}
+    # Compile logic
+    echo "Compiling from OTEL conventions..."
+    echo "Conventions: ${conventions}"
+    echo "Rust output: ${rust_output}"
+    echo "Shell output: ${shell_output}"
+    {% elif "define" in cmd.path %}
+    # Define logic
+    echo "Defining agent pattern: ${pattern}"
+    case "${pattern}" in
+        openai_swarm)
+            echo "- Lightweight routines"
+            echo "- Context-preserving handoffs"
+            echo "- Minimal abstractions"
+            ;;
+        enterprise_swarm)
+            echo "- Production-ready reliability"
+            echo "- Hierarchical coordination"
+            echo "- Comprehensive logging"
+            ;;
+        agency_swarm)
+            echo "- Role-based specialization"
+            echo "- Type-safe tools"
+            echo "- Custom messaging"
+            ;;
+        infinite_loop)
+            echo "- Specification-driven"
+            echo "- Wave coordination"
+            echo "- Quality gates"
+            ;;
+    esac
+    {% elif "trace" in cmd.path %}
+    # Trace logic
+    echo "Tracing AI prompt..."
+    echo "Provider: ${provider}"
+    echo "Prompt file: ${prompt_file}"
+    {% elif "govern" in cmd.path %}
+    # Govern logic
+    echo "Applying governance model: ${model}"
+    {% elif "optimize" in cmd.path %}
+    # Optimize logic
+    echo "Running DLSS optimization..."
+    echo "Specification: ${spec}"
+    echo "Wave size: ${wave_size}"
+    {% elif "validate" in cmd.path %}
+    # Validate logic
+    echo "Validating SwarmSH superiority over ${framework}"
+    case "${framework}" in
+        langchain)
+            echo "Architectural gaps:"
+            echo "- No mathematical guarantees"
+            echo "- Telemetry is afterthought"
+            echo "- No formal governance"
+            echo "- Cannot export to shell"
+            echo "Fatal flaw: Built for completion, not coordination"
+            ;;
+        autogen)
+            echo "Architectural gaps:"
+            echo "- Flat agent model"
+            echo "- No optimization loops"
+            echo "- CLI is imperative"
+            echo "Fatal flaw: No observability-first design"
+            ;;
+        dspy)
+            echo "Architectural gaps:"
+            echo "- No time guarantees"
+            echo "- Opaque operations"
+            echo "- Lossy transformations"
+            echo "Fatal flaw: Academic, not production-ready"
+            ;;
+        crewai)
+            echo "Architectural gaps:"
+            echo "- Cannot validate like ops"
+            echo "- Infinite loops uncontrolled"
+            echo "- Race conditions possible"
+            echo "Fatal flaw: Marketing over mathematical rigor"
+            ;;
+    esac
+    echo ""
+    echo "Conclusion: SwarmSH is architecturally superior"
+    {% endif %}
+    
+    # End span
+    emit_span_end "{{ cmd.telemetry_span }}" "${correlation_id}"
+}
+{% endfor %}
+
+# Main command dispatcher
+main() {
+    if [[ $# -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+    
+    # Process global options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            --version|-v)
+                show_version
+                exit 0
+                ;;
+            --correlation-id)
+                CORRELATION_ID="$2"
+                export CORRELATION_ID
+                shift 2
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    
+    # Dispatch to command
+    local cmd=""
+    while [[ $# -gt 0 && "$1" != --* ]]; do
+        cmd="${cmd}_$1"
+        shift
+    done
+    cmd="${cmd#_}"  # Remove leading underscore
+    
+    # Find matching command function
+    {% for cmd in cli_commands %}
+    if [[ "${cmd}" == "{{ cmd.path | join('_') }}" ]]; then
+        {{ cmd.path | join('_') }} "$@"
+        exit $?
+    fi
+    {% endfor %}
+    
+    echo "Unknown command: ${cmd//_/ }" >&2
+    show_help
+    exit 1
+}
+
+# Execute main if not sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

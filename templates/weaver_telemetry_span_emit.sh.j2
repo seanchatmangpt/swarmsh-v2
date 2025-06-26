@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+# Weaver Telemetry Emission Functions
+# Generated from semantic conventions
+
+# Telemetry configuration
+TELEMETRY_ENABLED="${TELEMETRY_ENABLED:-true}"
+TELEMETRY_ENDPOINT="${TELEMETRY_ENDPOINT:-http://localhost:4318}"
+TELEMETRY_LOG_DIR="${TELEMETRY_LOG_DIR:-/tmp/weaver/telemetry}"
+TELEMETRY_FORMAT="${TELEMETRY_FORMAT:-json}"
+
+# Ensure log directory exists
+mkdir -p "${TELEMETRY_LOG_DIR}" 2>/dev/null || true
+
+# Get nanosecond timestamp
+get_nano_timestamp() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS: use perl for nanosecond precision
+        perl -MTime::HiRes=time -e 'printf "%.0f\n", time * 1_000_000_000'
+    else
+        # Linux: use date command
+        date +%s%N
+    fi
+}
+
+# Generate trace ID
+generate_trace_id() {
+    # 32 hex characters (128 bits)
+    printf '%032x' $(( RANDOM * RANDOM * RANDOM ))
+}
+
+# Generate span ID
+generate_span_id() {
+    # 16 hex characters (64 bits)
+    printf '%016x' $(( RANDOM * RANDOM ))
+}
+
+{% for span in spans %}
+# Emit span start for {{ span.name }}
+emit_{{ span.name }}_start() {
+    local correlation_id="${1:-$(uuidgen 2>/dev/null || echo "weaver-$$")}"
+    local trace_id="${2:-$(generate_trace_id)}"
+    local span_id="$(generate_span_id)"
+    local timestamp="$(get_nano_timestamp)"
+    
+    if [[ "${TELEMETRY_ENABLED}" != "true" ]]; then
+        return 0
+    fi
+    
+    # Create span record
+    local span_json=$(cat << EOF
+{
+  "name": "{{ span.name }}",
+  "trace_id": "${trace_id}",
+  "span_id": "${span_id}",
+  "parent_span_id": "${PARENT_SPAN_ID:-}",
+  "start_time_unix_nano": ${timestamp},
+  "kind": "{{ span.span_kind | upper }}",
+  "attributes": {
+    "correlation_id": "${correlation_id}",
+    {% for attr in span.attributes %}
+    {% if attr.reference %}
+    "{{ attr.reference }}": "${{"${" ~ attr.reference | replace(".", "_") | replace("weaver_", "") ~ ":-}"}}"{% if not loop.last %},{% endif %}
+    {% else %}
+    "{{ attr.id }}": "${{"${" ~ attr.id ~ ":-}"}}"{% if not loop.last %},{% endif %}
+    {% endif %}
+    {% endfor %}
+  }
+}
+EOF
+)
+    
+    # Log to file
+    echo "${span_json}" >> "${TELEMETRY_LOG_DIR}/spans.jsonl"
+    
+    # Export for child spans
+    export PARENT_SPAN_ID="${span_id}"
+    export CURRENT_TRACE_ID="${trace_id}"
+    export CURRENT_SPAN_ID="${span_id}"
+    export CURRENT_SPAN_START="${timestamp}"
+}
+
+# Emit span end for {{ span.name }}
+emit_{{ span.name }}_end() {
+    local correlation_id="${1:-${CORRELATION_ID:-}}"
+    local status="${2:-OK}"
+    local end_timestamp="$(get_nano_timestamp)"
+    
+    if [[ "${TELEMETRY_ENABLED}" != "true" ]]; then
+        return 0
+    fi
+    
+    # Calculate duration
+    local duration=$((end_timestamp - ${CURRENT_SPAN_START:-0}))
+    
+    # Create end record
+    local end_json=$(cat << EOF
+{
+  "span_id": "${CURRENT_SPAN_ID}",
+  "end_time_unix_nano": ${end_timestamp},
+  "duration_nano": ${duration},
+  "status": {
+    "code": "${status}",
+    "message": ""
+  }
+}
+EOF
+)
+    
+    # Log to file
+    echo "${end_json}" >> "${TELEMETRY_LOG_DIR}/span_ends.jsonl"
+    
+    # Restore parent context
+    if [[ -n "${PARENT_SPAN_ID:-}" ]]; then
+        export CURRENT_SPAN_ID="${PARENT_SPAN_ID}"
+        unset PARENT_SPAN_ID
+    fi
+}
+
+# Emit span error for {{ span.name }}
+emit_{{ span.name }}_error() {
+    local correlation_id="${1:-${CORRELATION_ID:-}}"
+    local error_message="${2:-Unknown error}"
+    local timestamp="$(get_nano_timestamp)"
+    
+    if [[ "${TELEMETRY_ENABLED}" != "true" ]]; then
+        return 0
+    fi
+    
+    # Create error event
+    local error_json=$(cat << EOF
+{
+  "span_id": "${CURRENT_SPAN_ID}",
+  "timestamp_unix_nano": ${timestamp},
+  "name": "exception",
+  "attributes": {
+    "exception.type": "Error",
+    "exception.message": "${error_message}",
+    "correlation_id": "${correlation_id}"
+  }
+}
+EOF
+)
+    
+    # Log to file
+    echo "${error_json}" >> "${TELEMETRY_LOG_DIR}/span_events.jsonl"
+    
+    # End span with error status
+    emit_{{ span.name }}_end "${correlation_id}" "ERROR"
+}
+{% endfor %}
+
+# Generic span emission functions
+emit_span_start() {
+    local span_name="$1"
+    local correlation_id="${2:-$(uuidgen 2>/dev/null || echo "weaver-$$")}"
+    
+    # Dispatch to specific span function if it exists
+    if type "emit_${span_name}_start" &>/dev/null; then
+        "emit_${span_name}_start" "${correlation_id}"
+    else
+        # Generic span start
+        local trace_id="${CURRENT_TRACE_ID:-$(generate_trace_id)}"
+        local span_id="$(generate_span_id)"
+        local timestamp="$(get_nano_timestamp)"
+        
+        if [[ "${TELEMETRY_ENABLED}" == "true" ]]; then
+            local span_json=$(cat << EOF
+{
+  "name": "${span_name}",
+  "trace_id": "${trace_id}",
+  "span_id": "${span_id}",
+  "parent_span_id": "${PARENT_SPAN_ID:-}",
+  "start_time_unix_nano": ${timestamp},
+  "kind": "INTERNAL",
+  "attributes": {
+    "correlation_id": "${correlation_id}"
+  }
+}
+EOF
+)
+            echo "${span_json}" >> "${TELEMETRY_LOG_DIR}/spans.jsonl"
+        fi
+        
+        export PARENT_SPAN_ID="${span_id}"
+        export CURRENT_TRACE_ID="${trace_id}"
+        export CURRENT_SPAN_ID="${span_id}"
+        export CURRENT_SPAN_START="${timestamp}"
+    fi
+}
+
+emit_span_end() {
+    local span_name="$1"
+    local correlation_id="${2:-${CORRELATION_ID:-}}"
+    local status="${3:-OK}"
+    
+    # Dispatch to specific span function if it exists
+    if type "emit_${span_name}_end" &>/dev/null; then
+        "emit_${span_name}_end" "${correlation_id}" "${status}"
+    else
+        # Generic span end
+        local end_timestamp="$(get_nano_timestamp)"
+        
+        if [[ "${TELEMETRY_ENABLED}" == "true" ]]; then
+            local duration=$((end_timestamp - ${CURRENT_SPAN_START:-0}))
+            local end_json=$(cat << EOF
+{
+  "span_id": "${CURRENT_SPAN_ID}",
+  "end_time_unix_nano": ${end_timestamp},
+  "duration_nano": ${duration},
+  "status": {
+    "code": "${status}",
+    "message": ""
+  }
+}
+EOF
+)
+            echo "${end_json}" >> "${TELEMETRY_LOG_DIR}/span_ends.jsonl"
+        fi
+        
+        if [[ -n "${PARENT_SPAN_ID:-}" ]]; then
+            export CURRENT_SPAN_ID="${PARENT_SPAN_ID}"
+            unset PARENT_SPAN_ID
+        fi
+    fi
+}
+
+emit_span_error() {
+    local span_name="$1"
+    local correlation_id="${2:-${CORRELATION_ID:-}}"
+    local error_message="${3:-Unknown error}"
+    
+    # Dispatch to specific span function if it exists
+    if type "emit_${span_name}_error" &>/dev/null; then
+        "emit_${span_name}_error" "${correlation_id}" "${error_message}"
+    else
+        # Generic error handling
+        local timestamp="$(get_nano_timestamp)"
+        
+        if [[ "${TELEMETRY_ENABLED}" == "true" ]]; then
+            local error_json=$(cat << EOF
+{
+  "span_id": "${CURRENT_SPAN_ID}",
+  "timestamp_unix_nano": ${timestamp},
+  "name": "exception",
+  "attributes": {
+    "exception.type": "Error",
+    "exception.message": "${error_message}",
+    "correlation_id": "${correlation_id}"
+  }
+}
+EOF
+)
+            echo "${error_json}" >> "${TELEMETRY_LOG_DIR}/span_events.jsonl"
+        fi
+        
+        emit_span_end "${span_name}" "${correlation_id}" "ERROR"
+    fi
+}
+
+# Export OTEL spans to collector
+export_spans_to_collector() {
+    if [[ "${TELEMETRY_ENABLED}" != "true" ]]; then
+        return 0
+    fi
+    
+    local spans_file="${TELEMETRY_LOG_DIR}/spans.jsonl"
+    if [[ ! -f "${spans_file}" ]]; then
+        return 0
+    fi
+    
+    # Convert JSONL to OTLP format and send to collector
+    # This is a simplified version - real implementation would properly format OTLP
+    if command -v curl &>/dev/null; then
+        curl -X POST "${TELEMETRY_ENDPOINT}/v1/traces" \
+            -H "Content-Type: application/json" \
+            -d @"${spans_file}" \
+            2>/dev/null || true
+    fi
+}
+
+# Telemetry report
+show_telemetry_report() {
+    echo "=== Weaver Telemetry Report ==="
+    echo "Enabled: ${TELEMETRY_ENABLED}"
+    echo "Endpoint: ${TELEMETRY_ENDPOINT}"
+    echo "Log directory: ${TELEMETRY_LOG_DIR}"
+    
+    if [[ -d "${TELEMETRY_LOG_DIR}" ]]; then
+        echo ""
+        echo "Span statistics:"
+        echo "- Total spans: $(wc -l < "${TELEMETRY_LOG_DIR}/spans.jsonl" 2>/dev/null || echo 0)"
+        echo "- Completed spans: $(wc -l < "${TELEMETRY_LOG_DIR}/span_ends.jsonl" 2>/dev/null || echo 0)"
+        echo "- Error events: $(wc -l < "${TELEMETRY_LOG_DIR}/span_events.jsonl" 2>/dev/null || echo 0)"
+    fi
+}

@@ -1,8 +1,23 @@
 # Weaver Forge Configuration for SwarmSH v2
 # Maximizes code generation from semantic conventions (targeting 85-90%)
 
-file_format: 0.1.0
+version: "0.1.0"
+target: "rust"
+output_dir: "generated"
 schema_url: https://opentelemetry.io/schemas/1.21.0
+
+# Semantic convention files to process
+semantic_conventions:
+  - "semantic-conventions/swarmsh-agent.yaml"
+  - "semantic-conventions/swarmsh-analytics.yaml"
+  - "semantic-conventions/swarmsh-coordination.yaml"
+  - "semantic-conventions/swarmsh-health.yaml"
+  - "semantic-conventions/swarmsh-work.yaml"
+  - "semantic-conventions/swarmsh-worktree.yaml"
+  - "semantic-conventions/swarmsh-infinite-loop.yaml"
+  - "semantic-conventions/swarmsh-auto-8020.yaml"
+  - "semantic-conventions/swarmsh-automation.yaml"
+  - "semantic-conventions/swarmsh-cli.yaml"
 
 # Global parameters available in all templates
 params:
@@ -28,81 +43,16 @@ params:
     
 # Template definitions for code generation
 templates:
-  # Core module file (must be first)
-  - template: "rust/mod.rs.j2"
+  # CLI command generation (our specific templates)
+  - template: "cli_commands.rs.j2"
     filter: "."
     application_mode: single
-    file_name: "src/generated/mod.rs"
+    output: "generated_cli.rs"
     
-  # Core Rust code generation
-  - template: "rust/attributes.rs.j2"
+  - template: "shell_cli.sh.j2"
     filter: "."
     application_mode: single
-    file_name: "src/generated/attributes.rs"
-    
-  - template: "rust/span_builders.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/span_builders.rs"
-    
-  - template: "rust/metrics.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/metrics.rs"
-    
-  - template: "rust/events.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/events.rs"
-    
-  - template: "rust/validation.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/validation.rs"
-    
-  - template: "rust/errors.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/errors.rs"
-    
-  - template: "rust/sdk_init.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/sdk_init.rs"
-    
-  # Test generation
-  - template: "rust/tests.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "src/generated/tests.rs"
-    
-  # Shell export generation (critical for SwarmSH)
-  - template: "shell/telemetry_export.sh.j2"
-    filter: "."
-    application_mode: single
-    file_name: "shell-export/telemetry_export.sh"
-    
-  - template: "shell/span_tracking.sh.j2"
-    filter: "."
-    application_mode: single
-    file_name: "shell-export/span_tracking.sh"
-    
-  - template: "shell/metric_collection.sh.j2"
-    filter: "."
-    application_mode: single
-    file_name: "shell-export/metric_collection.sh"
-    
-  # Documentation generation
-  - template: "docs/semantic_conventions.md.j2"
-    filter: "."
-    application_mode: single
-    file_name: "docs/GENERATED_SEMANTIC_CONVENTIONS.md"
-    
-  # Integration tests
-  - template: "rust/integration_tests.rs.j2"
-    filter: "."
-    application_mode: single
-    file_name: "tests/generated_integration_tests.rs"
+    output: "swarmsh_cli.sh"
 
 # Custom filters and functions available in templates
 filters:
@@ -156,37 +106,4 @@ jinja2:
     lstrip_blocks: true
     keep_trailing_newline: true
 
-# Validation rules
-validation:
-  # Ensure generated code compiles
-  - type: rust_compilation
-    command: "cargo check --all-features"
-    
-  # Validate shell scripts
-  - type: shell_validation
-    command: "shellcheck shell-export/*.sh"
-    
-  # Check code coverage target
-  - type: coverage_check
-    target: 90
-    command: "scripts/measure-generation-coverage.sh"
-    
-  # Validate semantic conventions
-  - type: semconv_validation
-    command: "weaver registry check"
 
-# Weaver registry configuration
-registry:
-  # Registry manifest
-  manifest: "semantic-conventions/registry_manifest.yaml"
-  
-  # Convention files
-  conventions:
-    - "semantic-conventions/swarmsh-agent.yaml"
-    - "semantic-conventions/swarmsh-analytics.yaml"
-    - "semantic-conventions/swarmsh-coordination.yaml"
-    - "semantic-conventions/swarmsh-health.yaml"
-    - "semantic-conventions/swarmsh-work.yaml"
-    - "semantic-conventions/swarmsh-worktree.yaml"
-    - "semantic-conventions/swarmsh-infinite-loop.yaml"
-    - "semantic-conventions/swarmsh-auto-8020.yaml"

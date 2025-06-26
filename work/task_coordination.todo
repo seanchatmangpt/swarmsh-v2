@@ -1,0 +1,8 @@
+{
+  "id": "task_coordination",
+  "type": "coordination",
+  "priority": 8,
+  "status": "todo",
+  "submitted_at": "2025-06-26T05:56:24.3NZ",
+  "coordination_pattern": "pull_based"
+}

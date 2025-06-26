@@ -81,7 +81,7 @@ impl WeaverForge {
         let config_dir = config_path.as_ref().parent()
             .context("Failed to determine config directory")?;
         
-        let template_dir = config_dir.join("templates").join("registry").join(&config.target);
+        let template_dir = config_dir.join("templates");
         
         info!(
             version = %config.version,
@@ -337,6 +337,53 @@ impl WeaverForge {
             }
         }
 
+        Ok(())
+    }
+    
+    /// Generate CLI commands from semantic conventions
+    pub fn generate_cli_commands(
+        &mut self,
+        output_dir: &Path,
+    ) -> Result<()> {
+        info!("Generating CLI commands from semantic conventions");
+        
+        let semconv_data = self.load_semantic_conventions()?;
+        
+        // Generate main CLI module
+        let cli_rust = self.render_template(
+            "cli_commands.rs.j2",
+            &semconv_data,
+            &HashMap::new(),
+        )?;
+        
+        let cli_output_path = output_dir.join("generated_cli.rs");
+        std::fs::write(&cli_output_path, cli_rust)
+            .context("Failed to write CLI Rust code")?;
+        
+        info!("CLI Rust commands generated: {}", cli_output_path.display());
+        
+        // Generate shell CLI interface
+        let cli_shell = self.render_template(
+            "shell_cli.sh.j2",
+            &semconv_data,
+            &HashMap::new(),
+        )?;
+        
+        let shell_output_path = output_dir.join("swarmsh_cli.sh");
+        std::fs::write(&shell_output_path, cli_shell)
+            .context("Failed to write shell CLI")?;
+        
+        // Make shell script executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&shell_output_path)?.permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&shell_output_path, perms)?;
+        }
+        
+        info!("Shell CLI generated: {}", shell_output_path.display());
+        
         Ok(())
     }
 }

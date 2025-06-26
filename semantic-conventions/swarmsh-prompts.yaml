@@ -231,95 +231,104 @@ groups:
         note: "Indicates if cached prompt response was used for performance"
 
 # Metrics for prompt usage analytics
-  - id: swarmsh.prompts.metrics
-    type: metric_group
-    brief: "SwarmSH v2 prompt usage metrics"
-    note: >
-      Metrics tracking the effectiveness and performance of AI prompts
-      in coordination patterns, supporting 80/20 optimization principles.
-    metrics:
-      - id: swarmsh.prompts.requests.total
-        type: counter
-        brief: "Total number of prompt requests"
-        note: "Counter of all coordination prompt requests across patterns"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.operation
-          - ref: swarmsh.prompt.ai_provider
-      
-      - id: swarmsh.prompts.response_time
-        type: histogram
-        brief: "Distribution of prompt response times"
-        note: "Histogram of AI response times for coordination prompts"
-        unit: "ms"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.ai_provider
-          - ref: swarmsh.prompt.model_name
-      
-      - id: swarmsh.prompts.confidence_score
-        type: histogram
-        brief: "Distribution of AI confidence scores"
-        note: "Histogram of confidence levels for AI coordination decisions"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.operation
-      
-      - id: swarmsh.prompts.context_size
-        type: histogram
-        brief: "Distribution of prompt context sizes"
-        note: "Histogram of context data sizes passed to prompts"
-        unit: "By"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.operation
-      
-      - id: swarmsh.prompts.cache_hits.total
-        type: counter
-        brief: "Total number of prompt cache hits"
-        note: "Counter of cached prompt responses used for performance"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.ai_provider
-      
-      - id: swarmsh.prompts.errors.total
-        type: counter
-        brief: "Total number of prompt errors"
-        note: "Counter of failed prompt requests and AI errors"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.ai_provider
-          - id: swarmsh.prompt.error_type
-            type: string
-            brief: "Type of prompt error"
-            examples: ["timeout", "invalid_response", "model_unavailable", "quota_exceeded"]
-      
-      - id: swarmsh.prompts.decisions.total
-        type: counter
-        brief: "Total coordination decisions made"
-        note: "Counter of coordination decisions made via AI prompts"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.coordination_decision
-          - ref: swarmsh.prompt.implementation_priority
-      
-      - id: swarmsh.prompts.effectiveness_score
-        type: gauge
-        brief: "Current prompt effectiveness score"
-        note: "Gauge of prompt effectiveness based on decision outcomes"
-        unit: "1"
-        attributes:
-          - ref: swarmsh.prompt.pattern
-          - ref: swarmsh.prompt.operation
-          - id: swarmsh.prompt.evaluation_window
-            type: string
-            brief: "Time window for effectiveness calculation"
-            examples: ["1h", "24h", "7d", "30d"]
+  - id: swarmsh.prompts.requests.total
+    type: metric
+    metric_name: swarmsh.prompts.requests.total
+    brief: "Total number of prompt requests"
+    note: "Counter of all coordination prompt requests across patterns"
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.operation
+      - ref: swarmsh.prompt.ai_provider
+  
+  - id: swarmsh.prompts.response_time
+    type: metric
+    metric_name: swarmsh.prompts.response_time
+    brief: "Distribution of prompt response times"
+    note: "Histogram of AI response times for coordination prompts"
+    instrument: histogram
+    unit: "ms"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.ai_provider
+      - ref: swarmsh.prompt.model_name
+  
+  - id: swarmsh.prompts.confidence_score
+    type: metric
+    metric_name: swarmsh.prompts.confidence_score
+    brief: "Distribution of AI confidence scores"
+    note: "Histogram of confidence levels for AI coordination decisions"
+    instrument: histogram
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.operation
+  
+  - id: swarmsh.prompts.context_size
+    type: metric
+    metric_name: swarmsh.prompts.context_size
+    brief: "Distribution of prompt context sizes"
+    note: "Histogram of context data sizes passed to prompts"
+    instrument: histogram
+    unit: "By"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.operation
+  
+  - id: swarmsh.prompts.cache_hits.total
+    type: metric
+    metric_name: swarmsh.prompts.cache_hits.total
+    brief: "Total number of prompt cache hits"
+    note: "Counter of cached prompt responses used for performance"
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.ai_provider
+  
+  - id: swarmsh.prompts.errors.total
+    type: metric
+    metric_name: swarmsh.prompts.errors.total
+    brief: "Total number of prompt errors"
+    note: "Counter of failed prompt requests and AI errors"
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.ai_provider
+      - id: swarmsh.prompt.error_type
+        type: string
+        brief: "Type of prompt error"
+        examples: ["timeout", "invalid_response", "model_unavailable", "quota_exceeded"]
+  
+  - id: swarmsh.prompts.decisions.total
+    type: metric
+    metric_name: swarmsh.prompts.decisions.total
+    brief: "Total coordination decisions made"
+    note: "Counter of coordination decisions made via AI prompts"
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.coordination_decision
+      - ref: swarmsh.prompt.implementation_priority
+  
+  - id: swarmsh.prompts.effectiveness_score
+    type: metric
+    metric_name: swarmsh.prompts.effectiveness_score
+    brief: "Current prompt effectiveness score"
+    note: "Gauge of prompt effectiveness based on decision outcomes"
+    instrument: gauge
+    unit: "1"
+    attributes:
+      - ref: swarmsh.prompt.pattern
+      - ref: swarmsh.prompt.operation
+      - id: swarmsh.prompt.evaluation_window
+        type: string
+        brief: "Time window for effectiveness calculation"
+        examples: ["1h", "24h", "7d", "30d"]
 
 # Events for significant prompt-related occurrences
   - id: swarmsh.prompts.events

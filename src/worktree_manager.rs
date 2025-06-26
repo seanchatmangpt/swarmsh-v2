@@ -438,6 +438,7 @@ impl WorktreeManager {
     }
 
     /// Get specific worktree state
+    #[instrument(skip(self), fields(worktree_name = %name))]
     pub async fn get_worktree(&self, name: &str) -> SwarmResult<WorktreeState> {
         let worktrees = self.worktrees.read().await;
         worktrees.get(name)

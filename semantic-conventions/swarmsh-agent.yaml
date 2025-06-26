@@ -41,6 +41,12 @@ groups:
           - "ceo"           # High-level decision making (Agency Swarm pattern)
           - "developer"     # Code generation and modification
           - "assistant"     # General support and coordination
+          # Agent Swarm Operations patterns
+          - "migration"      # Database and API migration operations
+          - "integration"    # Workflow orchestration and integration
+          - "performance"    # System benchmarking and optimization
+          - "coordination"   # Work distribution and conflict resolution
+          - "intelligence"   # Strategic analysis and decision making
           
       - id: agent.capacity
         requirement_level: recommended
@@ -113,11 +119,16 @@ groups:
         brief: "List of work types this agent can handle"
         note: >
           Comma-separated list of work types the agent is capable of executing.
-          Used for intelligent work routing.
+          Used for intelligent work routing and Agent Swarm Operations patterns.
         examples:
           - ["feature", "bug"]
           - ["optimization", "analysis"]
           - ["coordination", "monitoring"]
+          - ["database_migration", "api_migration"]
+          - ["workflow_orchestration", "system_integration"]
+          - ["performance_benchmarking", "bottleneck_analysis"]
+          - ["work_distribution", "conflict_resolution"]
+          - ["strategic_analysis", "decision_making"]
 
       # Agent Framework Integration Attributes
       - id: agent.framework_pattern
@@ -269,11 +280,16 @@ groups:
         brief: "Type of inter-agent communication message"
         note: >
           Categorizes messages between agents for communication patterns.
+          Enhanced for Agent Swarm Operations intelligence streaming.
         examples:
           - "handoff_request"
           - "status_update"
           - "error_notification"
           - "coordination_signal"
+          - "intelligence_stream"
+          - "work_claim_request"
+          - "migration_status"
+          - "performance_report"
 
       - id: agent.hierarchy.level
         requirement_level: optional
@@ -288,6 +304,70 @@ groups:
           - 1  # Supervisor level
           - 2  # Manager level
           - 3  # Executive level
+
+      # Agent Swarm Operations attributes
+      - id: agent.registry.json_config
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "JSON configuration for agent registration"
+        note: >
+          Serialized JSON containing agent configuration for registry-based
+          deployment patterns following Agent Swarm Operations guide.
+        examples:
+          - '{"team": "backend", "worktree": "feature-branch", "priority": "high"}'
+          - '{"specialization": "migration", "capacity": 5, "environment": "production"}'
+
+      - id: agent.worktree.path
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Git worktree path for agent deployment"
+        note: >
+          Path to git worktree where agent is deployed for isolation.
+          Supports worktree-based agent deployment patterns.
+        examples:
+          - "/project/worktrees/feature-xyz"
+          - "/project/worktrees/migration-agent-001"
+
+      - id: agent.team
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Team assignment for agent coordination"
+        note: >
+          Team or group assignment for coordination and work distribution.
+          Used in Agent Swarm Operations team-based coordination.
+        examples:
+          - "backend"
+          - "frontend"
+          - "migration"
+          - "performance"
+
+      - id: agent.priority_level
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Priority level for work assignment"
+        note: >
+          Priority classification for work distribution and emergency handling.
+        examples:
+          - "low"
+          - "medium"
+          - "high"
+          - "critical"
+
+      - id: agent.intelligence.stream_id
+        requirement_level: optional
+        stability: experimental
+        type: string
+        brief: "Intelligence stream identifier for real-time AI integration"
+        note: >
+          Unique identifier for Claude AI integration intelligence streaming
+          pipeline following Agent Swarm Operations patterns.
+        examples:
+          - "intelligence_stream_1719123456789012345"
+          - "ai_pipeline_migration_001"
 
 operations:
   - id: swarmsh.agent.register
@@ -370,6 +450,37 @@ operations:
       Inter-agent communication for coordination and status updates.
       Supports specialized messaging protocols for different agent types.
 
+  # Agent Swarm Operations
+  - id: swarmsh.agent.registry.update
+    brief: "Update agent registry with JSON configuration"
+    note: >
+      Updates agent registry with new configuration following
+      Agent Swarm Operations JSON-driven patterns.
+
+  - id: swarmsh.agent.work.claim
+    brief: "Claim work item from coordination queue"
+    note: >
+      Agent claims available work based on specialization matching
+      and capacity constraints.
+
+  - id: swarmsh.agent.intelligence.stream
+    brief: "Process real-time intelligence streaming"
+    note: >
+      Handles Claude AI integration for intelligent work priority
+      analysis and dynamic agent assignment optimization.
+
+  - id: swarmsh.agent.migration.execute
+    brief: "Execute database or API migration task"
+    note: >
+      Specialized operation for migration agents handling database
+      schema changes and API migrations.
+
+  - id: swarmsh.agent.worktree.deploy
+    brief: "Deploy agent to specific git worktree"
+    note: >
+      Isolates agent execution within dedicated git worktree for
+      safe parallel development and testing.
+
 examples:
   - name: Agent Registration
     brief: "New agent joining the coordination system"
@@ -429,3 +540,44 @@ examples:
       swarmsh.agent.routine.step: 1
       swarmsh.agent.routine.step_name: "distribute_work"
       swarmsh.agent.capacity: 0.75
+
+  # Agent Swarm Operations Examples
+  - name: Migration Agent Registration with JSON Config
+    brief: "Migration agent with JSON-driven registry configuration"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012348"
+      swarmsh.agent.role: "migration"
+      swarmsh.agent.specializations: ["database_migration", "api_migration"]
+      swarmsh.agent.registry.json_config: '{"team": "backend", "worktree": "migration-v2", "priority": "high"}'
+      swarmsh.agent.worktree.path: "/project/worktrees/migration-v2"
+      swarmsh.agent.team: "backend"
+      swarmsh.agent.priority_level: "high"
+      swarmsh.agent.capacity: 0.90
+      swarmsh.agent.work_capacity: 3
+
+  - name: Intelligence Agent with Real-time Streaming
+    brief: "Intelligence agent with Claude AI integration for strategic analysis"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012349"
+      swarmsh.agent.role: "intelligence"
+      swarmsh.agent.specializations: ["strategic_analysis", "decision_making"]
+      swarmsh.agent.intelligence.stream_id: "intelligence_stream_1719123456789012350"
+      swarmsh.agent.communication.message_type: "intelligence_stream"
+      swarmsh.agent.routine.name: "ai_decision_pipeline"
+      swarmsh.agent.routine.step: 2
+      swarmsh.agent.routine.step_name: "process_recommendations"
+      swarmsh.agent.capacity: 0.95
+
+  - name: Performance Agent with Benchmarking Specialization
+    brief: "Performance agent focused on system optimization and bottleneck analysis"
+    attributes:
+      swarmsh.agent.id: "agent_1719123456789012350"
+      swarmsh.agent.role: "performance"
+      swarmsh.agent.specializations: ["performance_benchmarking", "bottleneck_analysis"]
+      swarmsh.agent.team: "infrastructure"
+      swarmsh.agent.priority_level: "medium"
+      swarmsh.agent.tool.name: "benchmark_suite"
+      swarmsh.agent.tool.validation_status: "valid"
+      swarmsh.agent.tool.execution_result: "success"
+      swarmsh.agent.capacity: 0.80
+      swarmsh.agent.work_capacity: 2

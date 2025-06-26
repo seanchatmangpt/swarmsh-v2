@@ -1,0 +1,121 @@
+schema_url: https://opentelemetry.io/schemas/1.20.0
+file_format: 1.1.0
+
+groups:
+  # SwarmSH Automation Semantic Conventions
+  # 80/20 high-impact automation operations
+  
+  - id: automation.health
+    prefix: swarmsh.automation.health
+    type: span
+    brief: "SwarmSH health monitoring operations"
+    attributes:
+      - id: operation
+        type: string
+        brief: "Health check operation type"
+        examples: ["system_check", "work_queue_check", "agent_status_check"]
+        requirement_level: required
+      - id: health_score
+        type: int
+        brief: "Overall system health score (0-100)"
+        requirement_level: required
+      - id: status
+        type: string
+        brief: "Health status classification"
+        examples: ["healthy", "degraded", "critical"]
+        requirement_level: required
+      - id: issues_count
+        type: int
+        brief: "Number of health issues detected"
+        requirement_level: required
+      - id: check_duration_ms
+        type: int
+        brief: "Time taken for health check in milliseconds"
+        requirement_level: required
+
+  - id: automation.optimization
+    prefix: swarmsh.automation.optimization
+    type: span  
+    brief: "SwarmSH work queue optimization operations"
+    attributes:
+      - id: operation
+        type: string
+        brief: "Optimization operation type"
+        examples: ["fast_path_cleanup", "completed_work_removal", "telemetry_archive"]
+        requirement_level: required
+      - id: optimizations_applied
+        type: int
+        brief: "Number of optimizations applied"
+        requirement_level: required
+      - id: entries_before
+        type: int
+        brief: "Number of entries before optimization"
+        requirement_level: optional
+      - id: entries_after
+        type: int
+        brief: "Number of entries after optimization"
+        requirement_level: optional
+      - id: optimization_duration_ms
+        type: int
+        brief: "Time taken for optimization in milliseconds"
+        requirement_level: required
+
+  - id: automation.metrics
+    prefix: swarmsh.automation.metrics
+    type: span
+    brief: "SwarmSH metrics collection operations"
+    attributes:
+      - id: operation
+        type: string
+        brief: "Metrics collection operation type"
+        examples: ["work_queue_metrics", "agent_metrics", "system_metrics"]
+        requirement_level: required
+      - id: active_work_count
+        type: int
+        brief: "Number of active work items"
+        requirement_level: required
+      - id: pending_work_count
+        type: int
+        brief: "Number of pending work items"
+        requirement_level: required
+      - id: completed_work_count
+        type: int
+        brief: "Number of completed work items"
+        requirement_level: required
+      - id: active_agents_count
+        type: int
+        brief: "Number of active agents"
+        requirement_level: required
+      - id: disk_usage_percent
+        type: int
+        brief: "Disk usage percentage"
+        requirement_level: required
+      - id: collection_duration_ms
+        type: int
+        brief: "Time taken for metrics collection in milliseconds"
+        requirement_level: required
+
+  - id: automation.cron
+    prefix: swarmsh.automation.cron
+    type: span
+    brief: "SwarmSH cron automation orchestration"
+    attributes:
+      - id: command
+        type: string
+        brief: "Cron automation command executed"
+        examples: ["health", "optimize", "metrics", "install", "status"]
+        requirement_level: required
+      - id: schedule
+        type: string
+        brief: "Cron schedule pattern"
+        examples: ["*/15 * * * *", "0 * * * *", "*/30 * * * *"]
+        requirement_level: optional
+      - id: total_duration_ms
+        type: int
+        brief: "Total execution time in milliseconds"
+        requirement_level: required
+      - id: status
+        type: string
+        brief: "Execution status"
+        examples: ["completed", "failed", "timeout"]
+        requirement_level: required

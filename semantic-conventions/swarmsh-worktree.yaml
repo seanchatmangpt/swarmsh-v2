@@ -178,7 +178,7 @@ groups:
         requirement_level: recommended
 
   - id: swarmsh.worktree.metrics
-    type: metric_group
+    type: metric
     brief: "Worktree performance metrics"
     note: |
       Key performance indicators for worktree operations including

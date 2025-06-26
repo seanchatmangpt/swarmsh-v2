@@ -15,7 +15,7 @@ use opentelemetry_sdk::{
     Resource,
 };
 use opentelemetry_stdout::SpanExporter as StdoutSpanExporter;
-use tracing::{info, warn, debug, instrument};
+use tracing::{info, warn, debug, instrument, error, Span};
 use tracing_subscriber::{
     layer::SubscriberExt,
     util::SubscriberInitExt,
@@ -23,7 +23,12 @@ use tracing_subscriber::{
     fmt,
     Layer,
 };
+use tracing_error::ErrorLayer;
+use tracing_timing::{Builder as TimingBuilder, Histogram, TimingSubscriber};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use std::time::{Instant, Duration};
+use std::sync::Arc;
 
 /// Telemetry configuration modes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +66,9 @@ pub struct TelemetryConfig {
     pub enable_prometheus: bool,
     pub log_level: String,
     pub sample_ratio: f64,
+    pub enable_timing: bool,
+    pub timing_max_value: u64,
+    pub timing_precision: u32,
 }
 
 impl Default for TelemetryConfig {
@@ -94,6 +102,15 @@ impl Default for TelemetryConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1.0),
+            enable_timing: std::env::var("SWARMSH_ENABLE_TIMING").map(|v| v == "true").unwrap_or(true),
+            timing_max_value: std::env::var("SWARMSH_TIMING_MAX_VALUE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(10_000_000),  // 10 seconds in microseconds
+            timing_precision: std::env::var("SWARMSH_TIMING_PRECISION")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2),  // 2 significant digits
         }
     }
 }
@@ -102,6 +119,7 @@ impl Default for TelemetryConfig {
 pub struct TelemetryManager {
     config: TelemetryConfig,
     tracer_provider: Option<SdkTracerProvider>,
+    timing_subscriber: Option<Arc<TimingSubscriber>>,
     _guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 }
 
@@ -116,6 +134,7 @@ impl TelemetryManager {
         let mut manager = Self {
             config,
             tracer_provider: None,
+            timing_subscriber: None,
             _guard: None,
         };
         
@@ -134,9 +153,92 @@ impl TelemetryManager {
         Self::with_config(config).await
     }
     
+    /// Create timing subscriber for inter-event timing metrics
+    fn create_timing_subscriber(&self) -> Result<Arc<TimingSubscriber>> {
+        if !self.config.enable_timing {
+            return Err(anyhow::anyhow!("Timing is disabled"));
+        }
+        
+        let max_value = self.config.timing_max_value;
+        let precision = self.config.timing_precision as u8;
+        
+        let subscriber = TimingBuilder::default()
+            .build(move || {
+                Histogram::new_with_max(max_value, precision).unwrap()
+            });
+            
+        Ok(Arc::new(subscriber))
+    }
+    
+    /// Get timing histograms for analysis
+    pub fn get_timing_histograms(&self) -> Option<Vec<(String, f64)>> {
+        if let Some(ref timing_subscriber) = self.timing_subscriber {
+            let mut results = Vec::new();
+            timing_subscriber.with_histograms(|span_groups| {
+                for (span_group, event_groups) in span_groups {
+                    for (event_group, hist) in event_groups {
+                        hist.refresh();
+                        let key = format!("{}::{}", span_group, event_group);
+                        results.push((key, hist.mean()));
+                    }
+                }
+            });
+            Some(results)
+        } else {
+            None
+        }
+    }
+    
+    /// Force synchronization of timing data
+    pub fn force_synchronize_timing(&self) {
+        if let Some(ref timing_subscriber) = self.timing_subscriber {
+            timing_subscriber.force_synchronize();
+        }
+    }
+    
+    /// Get timing summary statistics
+    pub fn get_timing_summary(&self) -> Option<String> {
+        if let Some(ref timing_subscriber) = self.timing_subscriber {
+            let mut output = String::new();
+            timing_subscriber.with_histograms(|span_groups| {
+                for (span_group, event_groups) in span_groups {
+                    for (event_group, hist) in event_groups {
+                        hist.refresh();
+                        output.push_str(&format!(
+                            "{}::{}: mean: {:.2}µs, p50: {:.2}µs, p90: {:.2}µs, p99: {:.2}µs, max: {:.2}µs\n",
+                            span_group,
+                            event_group,
+                            hist.mean(),
+                            hist.value_at_quantile(0.5),
+                            hist.value_at_quantile(0.9),
+                            hist.value_at_quantile(0.99),
+                            hist.max()
+                        ));
+                    }
+                }
+            });
+            Some(output)
+        } else {
+            None
+        }
+    }
+    
     /// Initialize telemetry based on configuration mode
     #[instrument(skip(self))]
     async fn initialize(&mut self) -> Result<()> {
+        // Create timing subscriber if enabled
+        if self.config.enable_timing {
+            match self.create_timing_subscriber() {
+                Ok(timing_subscriber) => {
+                    self.timing_subscriber = Some(timing_subscriber);
+                    debug!("Timing subscriber created successfully");
+                }
+                Err(e) => {
+                    warn!("Failed to create timing subscriber: {}", e);
+                }
+            }
+        }
+        
         match self.config.mode.clone() {
             TelemetryMode::Disabled => {
                 info!("Telemetry disabled");
@@ -161,6 +263,7 @@ impl TelemetryManager {
             service = %self.config.service_name,
             version = %self.config.service_version,
             mode = ?self.config.mode,
+            timing_enabled = self.config.enable_timing,
             "Telemetry initialized"
         );
         
@@ -191,6 +294,7 @@ impl TelemetryManager {
         
         tracing_subscriber::registry()
             .with(tracing_opentelemetry::layer().with_tracer(tracer))
+            .with(ErrorLayer::default())
             .with(
                 fmt::layer()
                     .with_target(false)
@@ -239,6 +343,7 @@ impl TelemetryManager {
         // Enhanced tracing subscriber for development
         tracing_subscriber::registry()
             .with(tracing_opentelemetry::layer().with_tracer(tracer))
+            .with(ErrorLayer::default())
             .with(
                 fmt::layer()
                     .with_target(true)
@@ -300,6 +405,7 @@ impl TelemetryManager {
         // Production logging setup
         tracing_subscriber::registry()
             .with(tracing_opentelemetry::layer().with_tracer(tracer))
+            .with(ErrorLayer::default())
             .with(
                 fmt::layer()
                     .json()
@@ -451,6 +557,39 @@ impl TelemetryManager {
     }
 }
 
+/// Correlation ID for distributed tracing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorrelationId(String);
+
+impl CorrelationId {
+    /// Generate new correlation ID
+    pub fn new() -> Self {
+        Self(Uuid::new_v4().to_string())
+    }
+    
+    /// Create from existing ID
+    pub fn from_string(id: String) -> Self {
+        Self(id)
+    }
+    
+    /// Get the correlation ID as string
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Default for CorrelationId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Display for CorrelationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// SwarmSH-specific telemetry trait for instrumentation
 pub trait SwarmTelemetry {
     /// Create agent lifecycle span with nanosecond precision
@@ -468,6 +607,9 @@ pub trait SwarmTelemetry {
     /// Create analytics span for DLSS 8020 optimization
     fn analytics_span(&self, tier: &str, operation: &str) -> tracing::Span;
 
+    /// Create span with correlation ID
+    fn span_with_correlation(&self, name: &str, correlation_id: &CorrelationId) -> tracing::Span;
+
     /// Record coordination metrics
     fn record_coordination_duration(&self, operation: &str, duration: std::time::Duration);
     
@@ -482,9 +624,13 @@ pub trait SwarmTelemetry {
     
     /// Record AI decision metrics
     fn record_ai_decision(&self, decision_type: &str, confidence: f64, duration: std::time::Duration);
+    
+    /// Record error with correlation
+    fn record_error_with_correlation(&self, error: &anyhow::Error, correlation_id: &CorrelationId);
 }
 
 /// Default implementation with lightweight support
+#[derive(Debug, Clone)]
 pub struct DefaultSwarmTelemetry {
     service_name: String,
 }
@@ -550,6 +696,16 @@ impl SwarmTelemetry for DefaultSwarmTelemetry {
             swarmsh.analytics.operation = %operation,
             swarmsh.analytics.principle = "8020_optimization",
             service.name = %self.service_name
+        )
+    }
+    
+    fn span_with_correlation(&self, name: &str, correlation_id: &CorrelationId) -> tracing::Span {
+        tracing::info_span!(
+            "swarmsh_operation",
+            operation_name = %name,
+            correlation_id = %correlation_id,
+            service.name = %self.service_name,
+            swarmsh.version = env!("CARGO_PKG_VERSION")
         )
     }
 
@@ -650,6 +806,25 @@ impl SwarmTelemetry for DefaultSwarmTelemetry {
             "AI decision recorded"
         );
     }
+    
+    #[instrument(skip(self, error))]
+    fn record_error_with_correlation(&self, error: &anyhow::Error, correlation_id: &CorrelationId) {
+        error!(
+            error = %error,
+            error_chain = ?error.chain().collect::<Vec<_>>(),
+            correlation_id = %correlation_id,
+            service.name = %self.service_name,
+            "Error occurred with correlation"
+        );
+        
+        // Record error metrics
+        metrics::counter!(
+            "swarmsh_errors_total",
+            1,
+            "service" => self.service_name.clone(),
+            "error_type" => std::any::type_name_of_val(&error).to_string()
+        );
+    }
 }
 
 /// Lightweight telemetry initialization for shell utilities
@@ -670,6 +845,7 @@ pub fn init_shell_telemetry(service_name: &str) -> Result<SdkTracerProvider> {
     
     tracing_subscriber::registry()
         .with(tracing_opentelemetry::layer().with_tracer(tracer))
+        .with(ErrorLayer::default())
         .with(
             fmt::layer()
                 .with_target(false)
@@ -680,6 +856,125 @@ pub fn init_shell_telemetry(service_name: &str) -> Result<SdkTracerProvider> {
 
     global::set_tracer_provider(provider.clone());
     Ok(provider)
+}
+
+/// Performance timer for automatic duration measurement
+pub struct PerfTimer {
+    name: String,
+    start: Instant,
+    correlation_id: Option<CorrelationId>,
+}
+
+impl PerfTimer {
+    /// Create new performance timer
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            start: Instant::now(),
+            correlation_id: None,
+        }
+    }
+    
+    /// Create performance timer with correlation ID
+    pub fn with_correlation(name: impl Into<String>, correlation_id: CorrelationId) -> Self {
+        Self {
+            name: name.into(),
+            start: Instant::now(),
+            correlation_id: Some(correlation_id),
+        }
+    }
+}
+
+impl Drop for PerfTimer {
+    fn drop(&mut self) {
+        let duration = self.start.elapsed();
+        
+        if let Some(ref correlation_id) = self.correlation_id {
+            info!(
+                name = %self.name,
+                duration_ms = duration.as_millis(),
+                duration_us = duration.as_micros(),
+                correlation_id = %correlation_id,
+                "Performance measurement with correlation"
+            );
+        } else {
+            info!(
+                name = %self.name,
+                duration_ms = duration.as_millis(),
+                duration_us = duration.as_micros(),
+                "Performance measurement"
+            );
+        }
+        
+        // Record metric
+        metrics::histogram!(
+            "swarmsh_operation_duration_seconds",
+            duration.as_secs_f64(),
+            "operation" => self.name.clone()
+        );
+    }
+}
+
+/// Macro for creating SwarmSH instrumented spans
+#[macro_export]
+macro_rules! swarm_span {
+    ($level:expr, $name:expr) => {
+        tracing::span!(
+            $level,
+            $name,
+            swarmsh.version = env!("CARGO_PKG_VERSION"),
+            swarmsh.timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        )
+    };
+    ($level:expr, $name:expr, $($field:tt)*) => {
+        tracing::span!(
+            $level,
+            $name,
+            swarmsh.version = env!("CARGO_PKG_VERSION"),
+            swarmsh.timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+            $($field)*
+        )
+    };
+}
+
+/// Macro for error instrumentation with SwarmSH context
+#[macro_export]
+macro_rules! swarm_error {
+    ($err:expr) => {{
+        tracing::error!(
+            error = %$err,
+            error_type = std::any::type_name_of_val(&$err),
+            swarmsh.error = true,
+            "SwarmSH error occurred"
+        );
+        $err
+    }};
+    ($err:expr, $msg:expr) => {{
+        tracing::error!(
+            error = %$err,
+            error_type = std::any::type_name_of_val(&$err),
+            message = $msg,
+            swarmsh.error = true,
+            "SwarmSH error occurred"
+        );
+        $err
+    }};
+    ($err:expr, correlation_id = $corr_id:expr) => {{
+        tracing::error!(
+            error = %$err,
+            error_type = std::any::type_name_of_val(&$err),
+            correlation_id = %$corr_id,
+            swarmsh.error = true,
+            "SwarmSH error occurred with correlation"
+        );
+        $err
+    }};
 }
 
 /// Initialize global SwarmSH telemetry (convenience function)

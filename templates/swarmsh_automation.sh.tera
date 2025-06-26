@@ -1,0 +1,355 @@
+#!/bin/bash
+##############################################################################
+# SwarmSH Automation - Generated from Rust Implementation
+##############################################################################
+#
+# DESCRIPTION:
+#   80/20 automation functionality exported from SwarmSH v2 Rust implementation.
+#   Maintains mathematical zero-conflict guarantees and OTEL semantic conventions.
+#
+# GENERATED FROM:
+#   swarmsh-automation Rust binary using OTEL Weaver semantic conventions
+#
+# 80/20 FEATURES:
+#   1. Health monitoring (prevents system failures) - CRITICAL IMPACT
+#   2. Work queue optimization (maintains performance) - HIGH IMPACT  
+#   3. Metrics collection (provides visibility) - MEDIUM IMPACT
+#
+# USAGE:
+#   ./swarmsh_automation.sh health      # Run health monitoring
+#   ./swarmsh_automation.sh optimize    # Run work queue optimization
+#   ./swarmsh_automation.sh metrics     # Collect system metrics
+#   ./swarmsh_automation.sh install     # Install cron jobs
+#   ./swarmsh_automation.sh status      # Show automation status
+#
+##############################################################################
+
+set -euo pipefail
+
+# Configuration from template context
+COORDINATION_DIR="{{ coordination_dir | default("/tmp/swarmsh-coordination") }}"
+LOG_DIR="{{ log_dir | default("/tmp/swarmsh-logs") }}"
+ENABLE_AI="{{ enable_ai | default(true) }}"
+
+# Ensure directories exist
+mkdir -p "$COORDINATION_DIR" "$LOG_DIR"
+
+# OTEL semantic conventions for telemetry
+generate_trace_id() {
+    openssl rand -hex 16 2>/dev/null || echo "$(date +%s%N | sha256sum | cut -c1-32)"
+}
+
+generate_span_id() {
+    openssl rand -hex 8 2>/dev/null || echo "$(date +%s%N | sha256sum | cut -c1-16)"
+}
+
+# Log with OTEL semantic conventions
+log_otel_span() {
+    local operation="$1"
+    local duration_ms="$2"
+    local attributes="$3"
+    local trace_id=$(generate_trace_id)
+    local span_id=$(generate_span_id)
+    
+    cat >> "$LOG_DIR/telemetry_spans.jsonl" <<EOF
+{"trace_id":"$trace_id","span_id":"$span_id","operation":"$operation","duration_ms":$duration_ms,"attributes":$attributes,"timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+EOF
+}
+
+log_with_correlation() {
+    local level="$1"
+    local message="$2"
+    local correlation_id="${3:-$(generate_trace_id)}"
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    
+    echo "[$timestamp] [$level] [correlation_id=$correlation_id] $message" | tee -a "$LOG_DIR/automation.log"
+}
+
+# 80/20 FEATURE 1: Health Monitoring (Critical Impact)
+run_health_monitoring() {
+    local start_time=$(date +%s%N)
+    local correlation_id=$(generate_trace_id)
+    
+    log_with_correlation "INFO" "🏥 Starting 80/20 health monitoring" "$correlation_id"
+    
+    local health_score=100
+    local issues=()
+    
+    # Check work queue size (performance indicator)
+    if [[ -f "$COORDINATION_DIR/work_claims.json" ]]; then
+        local work_count=$(grep -c '"work_item_id":' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+        if [[ $work_count -gt 100 ]]; then
+            health_score=$((health_score - 20))
+            issues+=("High work queue size: $work_count items")
+        fi
+    fi
+    
+    # Check agent status freshness
+    if [[ -f "$COORDINATION_DIR/agent_status.json" ]]; then
+        local agent_file_age=$(( $(date +%s) - $(stat -f%m "$COORDINATION_DIR/agent_status.json" 2>/dev/null || echo "0") ))
+        if [[ $agent_file_age -gt 3600 ]]; then # 1 hour
+            health_score=$((health_score - 10))
+            issues+=("Agent status file stale: ${agent_file_age}s old")
+        fi
+    fi
+    
+    # Check disk space
+    local disk_usage=$(df "$COORDINATION_DIR" | awk 'NR==2 {print $5}' | sed 's/%//' || echo "0")
+    if [[ $disk_usage -gt 90 ]]; then
+        health_score=$((health_score - 25))
+        issues+=("High disk usage: ${disk_usage}%")
+    fi
+    
+    # Determine status
+    local status="healthy"
+    if [[ $health_score -lt 70 ]]; then
+        status="degraded"
+        if [[ $health_score -lt 50 ]]; then
+            status="critical"
+        fi
+    fi
+    
+    # Create health report with semantic conventions
+    local health_report="$LOG_DIR/health_report_$(date +%Y%m%d_%H%M%S).json"
+    cat > "$health_report" <<EOF
+{
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "swarmsh.automation.health.health_score": $health_score,
+  "swarmsh.automation.health.status": "$status",
+  "swarmsh.automation.health.issues_count": ${#issues[@]},
+  "swarmsh.automation.health.operation": "system_check",
+  "issues": [$(if [[ ${#issues[@]} -gt 0 ]]; then printf '"%s",' "${issues[@]}" | sed 's/,$//'; fi)],
+  "telemetry": {
+    "correlation_id": "$correlation_id",
+    "semantic_convention": "swarmsh.automation.health"
+  }
+}
+EOF
+    
+    local end_time=$(date +%s%N)
+    local duration_ms=$(( (end_time - start_time) / 1000000 ))
+    
+    # Log OTEL span with semantic conventions
+    log_otel_span "swarmsh.automation.health.system_check" "$duration_ms" \
+        "{\"health_score\":$health_score,\"status\":\"$status\",\"issues_count\":${#issues[@]},\"correlation_id\":\"$correlation_id\"}"
+    
+    log_with_correlation "INFO" "✅ Health monitoring complete (${duration_ms}ms) - Score: $health_score/100 ($status)" "$correlation_id"
+    
+    if [[ ${#issues[@]} -gt 0 ]]; then
+        for issue in "${issues[@]}"; do
+            log_with_correlation "WARN" "⚠️ Issue: $issue" "$correlation_id"
+        done
+    fi
+    
+    echo "$health_report"
+}
+
+# 80/20 FEATURE 2: Work Queue Optimization (High Impact)
+run_work_optimization() {
+    local start_time=$(date +%s%N)
+    local correlation_id=$(generate_trace_id)
+    
+    log_with_correlation "INFO" "⚡ Starting 80/20 work queue optimization" "$correlation_id"
+    
+    local optimizations=0
+    local entries_before=0
+    local entries_after=0
+    
+    # Optimize fast-path files
+    if [[ -f "$COORDINATION_DIR/work_claims_fast.jsonl" ]]; then
+        entries_before=$(wc -l < "$COORDINATION_DIR/work_claims_fast.jsonl" 2>/dev/null || echo "0")
+        if [[ $entries_before -gt 100 ]]; then
+            log_with_correlation "INFO" "🔄 Optimizing fast-path file ($entries_before entries)" "$correlation_id"
+            tail -50 "$COORDINATION_DIR/work_claims_fast.jsonl" > "$COORDINATION_DIR/work_claims_fast.jsonl.tmp"
+            mv "$COORDINATION_DIR/work_claims_fast.jsonl.tmp" "$COORDINATION_DIR/work_claims_fast.jsonl"
+            entries_after=$(wc -l < "$COORDINATION_DIR/work_claims_fast.jsonl" 2>/dev/null || echo "0")
+            optimizations=$((optimizations + 1))
+            log_with_correlation "INFO" "✅ Fast-path file optimized (kept latest 50 entries)" "$correlation_id"
+        fi
+    fi
+    
+    # Clean up completed work items
+    if [[ -f "$COORDINATION_DIR/work_claims.json" ]] && command -v jq >/dev/null 2>&1; then
+        local initial_count=$(jq 'length' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+        if [[ $initial_count -gt 50 ]]; then
+            log_with_correlation "INFO" "🧹 Cleaning completed work items" "$correlation_id"
+            jq '[.[] | select(.status != "completed")]' "$COORDINATION_DIR/work_claims.json" > "$COORDINATION_DIR/work_claims.json.tmp"
+            mv "$COORDINATION_DIR/work_claims.json.tmp" "$COORDINATION_DIR/work_claims.json"
+            local final_count=$(jq 'length' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+            local removed=$((initial_count - final_count))
+            if [[ $removed -gt 0 ]]; then
+                optimizations=$((optimizations + 1))
+                log_with_correlation "INFO" "✅ Removed $removed completed work items" "$correlation_id"
+            fi
+        fi
+    fi
+    
+    local end_time=$(date +%s%N)
+    local duration_ms=$(( (end_time - start_time) / 1000000 ))
+    
+    # Log OTEL span with semantic conventions
+    log_otel_span "swarmsh.automation.optimization.work_queue" "$duration_ms" \
+        "{\"optimizations_applied\":$optimizations,\"entries_before\":$entries_before,\"entries_after\":$entries_after,\"correlation_id\":\"$correlation_id\"}"
+    
+    log_with_correlation "INFO" "✅ Work optimization complete (${duration_ms}ms) - Applied $optimizations optimizations" "$correlation_id"
+}
+
+# 80/20 FEATURE 3: Metrics Collection (Medium Impact)
+run_metrics_collection() {
+    local start_time=$(date +%s%N)
+    local correlation_id=$(generate_trace_id)
+    
+    log_with_correlation "INFO" "📊 Starting 80/20 metrics collection" "$correlation_id"
+    
+    # Collect work queue metrics
+    local active_work=0
+    local pending_work=0
+    local completed_work=0
+    
+    if [[ -f "$COORDINATION_DIR/work_claims.json" ]]; then
+        active_work=$(grep -c '"status":"active"' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+        pending_work=$(grep -c '"status":"pending"' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+        completed_work=$(grep -c '"status":"completed"' "$COORDINATION_DIR/work_claims.json" 2>/dev/null || echo "0")
+    fi
+    
+    # Collect agent metrics
+    local active_agents=0
+    if [[ -f "$COORDINATION_DIR/agent_status.json" ]]; then
+        active_agents=$(grep -c '"agent_id":' "$COORDINATION_DIR/agent_status.json" 2>/dev/null || echo "0")
+    fi
+    
+    # System metrics
+    local disk_usage=$(df "$COORDINATION_DIR" | awk 'NR==2 {print $5}' | sed 's/%//' 2>/dev/null || echo "0")
+    
+    # Create metrics report with semantic conventions
+    local metrics_report="$LOG_DIR/metrics_$(date +%Y%m%d_%H%M%S).json"
+    cat > "$metrics_report" <<EOF
+{
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "swarmsh.automation.metrics.operation": "work_queue_metrics",
+  "swarmsh.automation.metrics.active_work_count": $active_work,
+  "swarmsh.automation.metrics.pending_work_count": $pending_work,
+  "swarmsh.automation.metrics.completed_work_count": $completed_work,
+  "swarmsh.automation.metrics.active_agents_count": $active_agents,
+  "swarmsh.automation.metrics.disk_usage_percent": $disk_usage,
+  "telemetry": {
+    "correlation_id": "$correlation_id",
+    "semantic_convention": "swarmsh.automation.metrics"
+  }
+}
+EOF
+    
+    local end_time=$(date +%s%N)
+    local duration_ms=$(( (end_time - start_time) / 1000000 ))
+    
+    # Log OTEL span with semantic conventions
+    log_otel_span "swarmsh.automation.metrics.work_queue_metrics" "$duration_ms" \
+        "{\"active_work_count\":$active_work,\"pending_work_count\":$pending_work,\"completed_work_count\":$completed_work,\"active_agents_count\":$active_agents,\"correlation_id\":\"$correlation_id\"}"
+    
+    log_with_correlation "INFO" "✅ Metrics collection complete (${duration_ms}ms) - Report: $metrics_report" "$correlation_id"
+    
+    echo "$metrics_report"
+}
+
+# Install automation cron jobs
+install_cron_jobs() {
+    local correlation_id=$(generate_trace_id)
+    
+    log_with_correlation "INFO" "🔧 Installing 80/20 cron automation jobs" "$correlation_id"
+    
+    # Create cron entries following 80/20 principle
+    local cron_entries="
+# SwarmSH 80/20 Automation (Generated from Rust implementation)
+# Health monitoring every 15 minutes (prevents failures - critical impact)
+*/15 * * * * $(realpath "$0") health >> $LOG_DIR/cron.log 2>&1
+
+# Work queue optimization every hour (maintains performance - high impact)  
+0 * * * * $(realpath "$0") optimize >> $LOG_DIR/cron.log 2>&1
+
+# Metrics collection every 30 minutes (provides visibility - medium impact)
+*/30 * * * * $(realpath "$0") metrics >> $LOG_DIR/cron.log 2>&1
+"
+    
+    # Add to crontab
+    (crontab -l 2>/dev/null | grep -v "SwarmSH.*Automation" || true; echo "$cron_entries") | crontab -
+    
+    log_with_correlation "INFO" "✅ Cron jobs installed - Health (15min), Optimize (1hr), Metrics (30min)" "$correlation_id"
+}
+
+# Show automation status
+show_automation_status() {
+    local correlation_id=$(generate_trace_id)
+    
+    log_with_correlation "INFO" "📋 SwarmSH 80/20 Automation Status" "$correlation_id"
+    
+    echo "=== SwarmSH Automation Status ==="
+    echo "Coordination Directory: $COORDINATION_DIR"
+    echo "Log Directory: $LOG_DIR"
+    echo "AI Integration: $ENABLE_AI"
+    echo ""
+    
+    echo "=== Current Cron Jobs ==="
+    crontab -l | grep -A5 -B2 "SwarmSH.*Automation" || echo "No SwarmSH automation cron jobs found"
+    echo ""
+    
+    echo "=== Recent Health Reports ==="
+    if ls "$LOG_DIR"/health_report_*.json >/dev/null 2>&1; then
+        ls -t "$LOG_DIR"/health_report_*.json | head -3
+    else
+        echo "No health reports found"
+    fi
+    echo ""
+    
+    echo "=== Recent Metrics ==="
+    if ls "$LOG_DIR"/metrics_*.json >/dev/null 2>&1; then
+        ls -t "$LOG_DIR"/metrics_*.json | head -3
+    else
+        echo "No metrics reports found"
+    fi
+}
+
+# Main command processing
+main() {
+    local start_time=$(date +%s%N)
+    local operation_correlation_id=$(generate_trace_id)
+    
+    case "${1:-status}" in
+        "health")
+            run_health_monitoring
+            ;;
+        "optimize")
+            run_work_optimization
+            ;;
+        "metrics")
+            run_metrics_collection
+            ;;
+        "install")
+            install_cron_jobs
+            ;;
+        "status")
+            show_automation_status
+            ;;
+        *)
+            echo "Usage: $0 {health|optimize|metrics|install|status}"
+            echo ""
+            echo "SwarmSH 80/20 Automation - Exported from Rust Implementation"
+            echo "  health   - Run health monitoring check (critical impact)"
+            echo "  optimize - Run work queue optimization (high impact)"
+            echo "  metrics  - Collect system metrics (medium impact)"
+            echo "  install  - Install cron jobs for automated operations"
+            echo "  status   - Show automation status and recent activity"
+            echo ""
+            echo "Generated from: swarmsh-automation Rust binary"
+            echo "OTEL Semantic Conventions: swarmsh.automation.*"
+            exit 1
+            ;;
+    esac
+    
+    # Final telemetry with cron semantic conventions
+    local total_duration_ms=$(( ($(date +%s%N) - start_time) / 1000000 ))
+    log_otel_span "swarmsh.automation.cron" "$total_duration_ms" \
+        "{\"command\":\"${1:-status}\",\"status\":\"completed\",\"correlation_id\":\"$operation_correlation_id\"}"
+}
+
+# Run main function
+main "$@"

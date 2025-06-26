@@ -1,0 +1,318 @@
+groups:
+  - id: swarmsh.cli
+    prefix: swarmsh.cli
+    type: span
+    brief: "CLI command operations for SwarmSH coordination"
+    note: >
+      This semantic convention defines the observability contract for
+      command-line interface operations in the SwarmSH system. Enables
+      CLI generation from semantic conventions using WeaverForge.
+    attributes:
+      - id: cli.command
+        requirement_level: required
+        stability: stable
+        type: string
+        brief: "CLI command being executed"
+        note: >
+          The specific CLI command from coordination_helper.sh functions.
+          Maps directly to shell script functions for compatibility.
+        examples:
+          - "claim-work"      # claim_work() function
+          - "update-progress" # update_progress() function
+          - "complete-work"   # complete_work() function
+          - "register-agent"  # register_agent_in_team() function
+          - "analyze-priorities" # claude_analyze_work_priorities() function
+          
+      - id: cli.work_id
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Work item ID for work-related commands"
+        note: >
+          Required for work claiming, progress, and completion commands.
+          Uses nanosecond-precision format for uniqueness guarantees.
+        examples:
+          - "work_1719123456789012345"
+          
+      - id: cli.agent_id
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Agent ID for agent-related commands"
+        note: >
+          Required for agent registration and work claiming commands.
+          Uses nanosecond-precision format for uniqueness guarantees.
+        examples:
+          - "agent_1719123456789012345"
+          
+      - id: cli.team_name
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Team name for registration and coordination commands"
+        note: >
+          Identifies the coordination team for Scrum at Scale operations.
+          Required for register-agent and team-based commands.
+        examples:
+          - "backend-team"
+          - "frontend-team"
+          - "data-team"
+          
+      - id: cli.progress_percentage
+        requirement_level: conditional
+        stability: stable
+        type: int
+        brief: "Progress percentage for update-progress command"
+        note: >
+          Progress value (0-100) for work progress updates.
+          Required for update-progress command execution.
+        examples:
+          - 25
+          - 50
+          - 75
+          - 100
+          
+      - id: cli.work_result
+        requirement_level: conditional
+        stability: stable
+        type: string
+        brief: "Work completion result for complete-work command"
+        note: >
+          Result status for work completion. Required for complete-work
+          command to track success/failure outcomes.
+        examples:
+          - "success"
+          - "failed"
+          - "timeout"
+          - "cancelled"
+          
+      - id: cli.ai_analysis_requested
+        requirement_level: optional
+        stability: stable
+        type: boolean
+        brief: "Whether AI analysis was requested for the command"
+        note: >
+          Indicates if Claude AI analysis was invoked as part of command
+          execution. Used for AI usage tracking and optimization.
+        examples:
+          - true
+          - false
+          
+      - id: cli.execution_duration_ms
+        requirement_level: recommended
+        stability: stable
+        type: int
+        brief: "CLI command execution duration in milliseconds"
+        note: >
+          Measures command performance for optimization and monitoring.
+          Used for CLI responsiveness analysis and bottleneck detection.
+        examples:
+          - 50    # Fast command
+          - 500   # Normal command
+          - 2000  # Slow command
+          
+      - id: cli.shell_compatibility
+        requirement_level: required
+        stability: stable
+        type: boolean
+        brief: "Whether command maintains shell script compatibility"
+        note: >
+          Ensures Rust CLI maintains full compatibility with original
+          coordination_helper.sh script. Critical for migration safety.
+        examples:
+          - true
+          
+      - id: cli.atomic_operation
+        requirement_level: required
+        stability: stable
+        type: boolean
+        brief: "Whether CLI command requires atomic execution"
+        note: >
+          Indicates if command must execute atomically for consistency.
+          Work claiming and agent registration are atomic operations.
+        examples:
+          - true   # claim-work, register-agent, complete-work
+          - false  # update-progress, analyze-priorities
+          
+      - id: cli.coordination_pattern
+        requirement_level: optional
+        stability: stable
+        type: string
+        brief: "Coordination pattern used by the CLI command"
+        note: >
+          Identifies which coordination pattern is active during command
+          execution. Links CLI operations to coordination strategies.
+        examples:
+          - "scrum_at_scale"
+          - "roberts_rules"
+          - "realtime"
+          - "atomic"
+          
+      - id: cli.json_output
+        requirement_level: optional
+        stability: stable
+        type: boolean  
+        brief: "Whether command produces JSON output"
+        note: >
+          Indicates if command outputs structured JSON for machine parsing.
+          Enables programmatic integration and dashboard display.
+        examples:
+          - true
+          - false
+
+commands:
+  - id: swarmsh.cli.claim_work
+    brief: "Atomically claim available work item"
+    note: >
+      Maps to claim_work() function from coordination_helper.sh.
+      Implements atomic work claiming with conflict detection.
+    usage: "swarmsh claim-work --work-id <WORK_ID> --agent-id <AGENT_ID>"
+    required_attributes:
+      - cli.command
+      - cli.work_id
+      - cli.agent_id
+      - cli.atomic_operation
+      - cli.shell_compatibility
+    example_attributes:
+      swarmsh.cli.command: "claim-work"
+      swarmsh.cli.work_id: "work_1719123456789012345"
+      swarmsh.cli.agent_id: "agent_1719123456789012400"
+      swarmsh.cli.atomic_operation: true
+      swarmsh.cli.shell_compatibility: true
+      
+  - id: swarmsh.cli.update_progress
+    brief: "Update work item progress percentage"
+    note: >
+      Maps to update_progress() function from coordination_helper.sh.
+      Enables progress tracking and coordination visibility.
+    usage: "swarmsh update-progress --work-id <WORK_ID> --progress <PERCENTAGE>"
+    required_attributes:
+      - cli.command
+      - cli.work_id
+      - cli.progress_percentage
+      - cli.shell_compatibility
+    example_attributes:
+      swarmsh.cli.command: "update-progress"
+      swarmsh.cli.work_id: "work_1719123456789012345"
+      swarmsh.cli.progress_percentage: 75
+      swarmsh.cli.atomic_operation: false
+      swarmsh.cli.shell_compatibility: true
+      
+  - id: swarmsh.cli.complete_work
+    brief: "Mark work item as completed with result"
+    note: >
+      Maps to complete_work() function from coordination_helper.sh.
+      Implements work completion with outcome reporting.
+    usage: "swarmsh complete-work --work-id <WORK_ID> --result <RESULT>"
+    required_attributes:
+      - cli.command
+      - cli.work_id
+      - cli.work_result
+      - cli.atomic_operation
+      - cli.shell_compatibility
+    example_attributes:
+      swarmsh.cli.command: "complete-work"
+      swarmsh.cli.work_id: "work_1719123456789012345"
+      swarmsh.cli.work_result: "success"
+      swarmsh.cli.atomic_operation: true
+      swarmsh.cli.shell_compatibility: true
+      
+  - id: swarmsh.cli.register_agent
+    brief: "Register agent in coordination team"
+    note: >
+      Maps to register_agent_in_team() function from coordination_helper.sh.
+      Implements agent registration with team coordination.
+    usage: "swarmsh register-agent --agent-id <AGENT_ID> --team <TEAM_NAME>"
+    required_attributes:
+      - cli.command
+      - cli.agent_id
+      - cli.team_name
+      - cli.atomic_operation
+      - cli.shell_compatibility
+    example_attributes:
+      swarmsh.cli.command: "register-agent"
+      swarmsh.cli.agent_id: "agent_1719123456789012400"
+      swarmsh.cli.team_name: "backend-team"
+      swarmsh.cli.atomic_operation: true
+      swarmsh.cli.shell_compatibility: true
+      
+  - id: swarmsh.cli.analyze_priorities
+    brief: "AI-powered work priority analysis"
+    note: >
+      Maps to claude_analyze_work_priorities() function from coordination_helper.sh.
+      Uses AI integration for intelligent work prioritization.
+    usage: "swarmsh analyze-priorities [--json]"
+    required_attributes:
+      - cli.command
+      - cli.ai_analysis_requested
+      - cli.shell_compatibility
+    example_attributes:
+      swarmsh.cli.command: "analyze-priorities"
+      swarmsh.cli.ai_analysis_requested: true
+      swarmsh.cli.json_output: true
+      swarmsh.cli.atomic_operation: false
+      swarmsh.cli.shell_compatibility: true
+
+operations:
+  - id: swarmsh.cli.execute_command
+    brief: "Execute CLI command with telemetry tracking"
+    note: >
+      Main CLI execution operation that wraps all command types.
+      Provides consistent telemetry and performance monitoring.
+      
+  - id: swarmsh.cli.validate_compatibility
+    brief: "Validate shell script compatibility"
+    note: >
+      Ensures CLI maintains 100% compatibility with coordination_helper.sh.
+      Critical for migration and deployment safety.
+      
+  - id: swarmsh.cli.generate_json_output
+    brief: "Generate structured JSON output for machine parsing"
+    note: >
+      Produces machine-readable JSON output for dashboard integration
+      and programmatic coordination systems.
+
+examples:
+  - name: Atomic Work Claiming via CLI
+    brief: "Agent claims work using CLI interface"
+    attributes:
+      swarmsh.cli.command: "claim-work"
+      swarmsh.cli.work_id: "work_1719123456789012345"
+      swarmsh.cli.agent_id: "agent_1719123456789012400"
+      swarmsh.cli.atomic_operation: true
+      swarmsh.cli.shell_compatibility: true
+      swarmsh.cli.execution_duration_ms: 45
+      swarmsh.cli.coordination_pattern: "atomic"
+      
+  - name: Progress Update with JSON Output
+    brief: "Work progress update with structured output"
+    attributes:
+      swarmsh.cli.command: "update-progress"
+      swarmsh.cli.work_id: "work_1719123456789012345"
+      swarmsh.cli.progress_percentage: 75
+      swarmsh.cli.json_output: true
+      swarmsh.cli.shell_compatibility: true
+      swarmsh.cli.execution_duration_ms: 25
+      swarmsh.cli.atomic_operation: false
+      
+  - name: AI-Powered Priority Analysis
+    brief: "Claude AI analyzes work priorities"
+    attributes:
+      swarmsh.cli.command: "analyze-priorities"
+      swarmsh.cli.ai_analysis_requested: true
+      swarmsh.cli.json_output: true
+      swarmsh.cli.shell_compatibility: true
+      swarmsh.cli.execution_duration_ms: 1500
+      swarmsh.cli.coordination_pattern: "scrum_at_scale"
+      swarmsh.cli.atomic_operation: false
+      
+  - name: Agent Registration in Team
+    brief: "Register new agent in coordination team"
+    attributes:
+      swarmsh.cli.command: "register-agent"
+      swarmsh.cli.agent_id: "agent_1719123456789012500"
+      swarmsh.cli.team_name: "data-team"
+      swarmsh.cli.atomic_operation: true
+      swarmsh.cli.shell_compatibility: true
+      swarmsh.cli.execution_duration_ms: 75
+      swarmsh.cli.coordination_pattern: "scrum_at_scale"

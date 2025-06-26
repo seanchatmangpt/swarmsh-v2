@@ -1,11 +1,11 @@
 {
-    "timestamp": "2025-06-25T21:07:27.3NZ",
-    "coordination_epoch": 1750885647685385000,
+    "timestamp": "2025-06-26T05:55:12.3NZ",
+    "coordination_epoch": 1750917312618184000,
     "validation_summary": {
         "weaver_version": "weaver 0.15.3",
-        "semantic_convention_files":        9,
-        "generated_telemetry_files":        4,
-        "test_files":        8
+        "semantic_convention_files":       12,
+        "generated_telemetry_files":        8,
+        "test_files":       10
     },
     "semantic_conventions": {
         "swarmsh_agent": "present",

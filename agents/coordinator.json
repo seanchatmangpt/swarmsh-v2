@@ -1,0 +1,8 @@
+{
+  "id": "coordinator",
+  "role": "0.8", 
+  "capacity": 1.0,
+  "status": "active",
+  "registered_at": "2025-06-26T05:56:16.3NZ",
+  "coordination_pattern": "scrum_at_scale"
+}

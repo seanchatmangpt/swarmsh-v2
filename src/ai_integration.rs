@@ -54,6 +54,7 @@ pub struct ModelInfo {
 }
 
 /// Claude API client
+#[derive(Debug, Clone)]
 pub struct ClaudeClient {
     telemetry: DefaultSwarmTelemetry,
     api_endpoint: Option<String>,
@@ -110,6 +111,7 @@ impl ClaudeClient {
 }
 
 /// Ollama local LLM client with full feature support
+#[derive(Debug, Clone)]
 pub struct OllamaClient {
     ollama: Ollama,
     default_model: String,
@@ -377,6 +379,7 @@ impl OllamaClient {
 }
 
 /// AI integration manager with both Claude and Ollama support
+#[derive(Debug, Clone)]
 pub struct AIIntegration {
     claude: Option<ClaudeClient>,
     ollama: Option<OllamaClient>,
@@ -404,17 +407,34 @@ impl AIIntegration {
     /// Get AI analysis using available clients
     #[instrument(skip(self))]
     pub async fn analyze(&self, context: &str) -> Result<AIAnalysis> {
+        // Timing event: AI analysis start
+        tracing::trace!("ai_analysis_start");
+        
         if let Some(ref ollama) = self.ollama {
+            // Timing event: Ollama analysis start
+            tracing::trace!("ollama_analysis_start");
+            
             // Prefer Ollama for local, fast analysis
             match ollama.analyze_coordination(context, None).await {
-                Ok(analysis) => return Ok(analysis),
-                Err(e) => warn!("Ollama analysis failed: {}", e),
+                Ok(analysis) => {
+                    // Timing event: Ollama analysis completed
+                    tracing::trace!("ollama_analysis_completed");
+                    return Ok(analysis);
+                },
+                Err(e) => {
+                    // Timing event: Ollama analysis failed
+                    tracing::trace!("ollama_analysis_failed");
+                    warn!("Ollama analysis failed: {}", e);
+                },
             }
         }
         
         if let Some(ref _claude) = self.claude {
+            // Timing event: Claude analysis start
+            tracing::trace!("claude_analysis_start");
+            
             // Fallback to Claude for comprehensive analysis
-            return Ok(AIAnalysis {
+            let result = Ok(AIAnalysis {
                 recommendations: vec![
                     format!("Claude analysis for: {}", context),
                 ],
@@ -424,7 +444,14 @@ impl AIIntegration {
                 ],
                 reasoning: None,
             });
+            
+            // Timing event: Claude analysis completed
+            tracing::trace!("claude_analysis_completed");
+            return result;
         }
+        
+        // Timing event: No AI available, using fallback
+        tracing::trace!("ai_fallback_analysis");
         
         // No AI available, return basic analysis
         Ok(AIAnalysis {
@@ -450,9 +477,23 @@ impl AIIntegration {
     /// Make intelligent agent decisions
     #[instrument(skip(self, context))]
     pub async fn make_decision(&self, context: &serde_json::Value, decision_type: &str) -> Result<AgentDecision> {
+        // Timing event: Decision making start
+        tracing::trace!("decision_making_start");
+        
         if let Some(ref ollama) = self.ollama {
-            return ollama.make_agent_decision(context, decision_type).await;
+            // Timing event: Ollama decision start
+            tracing::trace!("ollama_decision_start");
+            
+            let result = ollama.make_agent_decision(context, decision_type).await;
+            
+            // Timing event: Ollama decision completed
+            tracing::trace!("ollama_decision_completed");
+            
+            return result;
         }
+        
+        // Timing event: Rule-based decision fallback
+        tracing::trace!("rule_based_decision_fallback");
         
         // Fallback to rule-based decision
         Ok(AgentDecision {
@@ -489,6 +530,67 @@ impl AIIntegration {
         
         // Return original script if no AI available
         Ok(script.to_string())
+    }
+    
+    /// Analyze context with agent metadata and correlation ID
+    #[instrument(skip(self, metadata, correlation_id))]
+    pub async fn analyze_with_context(
+        &self,
+        prompt: &str,
+        metadata: &std::collections::HashMap<String, String>,
+        correlation_id: &crate::telemetry::CorrelationId,
+    ) -> Result<AIAnalysis> {
+        // Timing event: Context analysis start
+        tracing::trace!("context_analysis_start");
+        
+        // Build enhanced context with agent metadata
+        let mut enhanced_context = format!("PROMPT: {}\n\nCONTEXT:\n", prompt);
+        for (key, value) in metadata {
+            enhanced_context.push_str(&format!("- {}: {}\n", key, value));
+        }
+        enhanced_context.push_str(&format!("\nCorrelation ID: {}", correlation_id));
+        
+        if let Some(ref ollama) = self.ollama {
+            // Timing event: Ollama context analysis start
+            tracing::trace!("ollama_context_analysis_start");
+            
+            // Use ollama for enhanced analysis
+            match ollama.analyze_coordination(&enhanced_context, Some(&serde_json::to_string(&metadata)?)).await {
+                Ok(analysis) => {
+                    // Timing event: Ollama context analysis completed
+                    tracing::trace!("ollama_context_analysis_completed");
+                    return Ok(analysis);
+                },
+                Err(e) => {
+                    // Timing event: Ollama context analysis failed
+                    tracing::trace!("ollama_context_analysis_failed");
+                    warn!("Ollama context analysis failed: {}", e);
+                },
+            }
+        }
+        
+        // Timing event: Fallback context analysis
+        tracing::trace!("fallback_context_analysis");
+        
+        // Fallback analysis
+        let default_persona = "Generic Agent".to_string();
+        let default_model = "unknown".to_string();
+        let persona = metadata.get("persona").unwrap_or(&default_persona);
+        let model = metadata.get("ollama_model").unwrap_or(&default_model);
+        
+        Ok(AIAnalysis {
+            recommendations: vec![
+                format!("Analysis from {} using {}", persona, model),
+                format!("Context: {}", prompt.chars().take(100).collect::<String>()),
+                "Enhanced context analysis completed".to_string(),
+            ],
+            confidence: 0.75,
+            optimization_opportunities: vec![
+                "Consider implementing specific domain knowledge".to_string(),
+                "Enhance agent-specific decision making".to_string(),
+            ],
+            reasoning: Some(format!("Analyzed with correlation ID: {}", correlation_id)),
+        })
     }
 }
 

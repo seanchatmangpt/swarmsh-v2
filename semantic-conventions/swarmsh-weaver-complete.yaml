@@ -1,0 +1,440 @@
+# ========================
+# 🧠 SwarmSH Weaver Complete Specification
+# ========================
+# This is the authoritative specification for the entire SwarmSH system
+# All code, templates, and exports MUST derive from this specification
+
+groups:
+  - id: swarmsh.weaver
+    type: span
+    brief: Complete Weaver specification covering all SwarmSH concepts
+    prefix: weaver
+    attributes:
+      - id: spr.goal
+        type: string
+        brief: Sparse priming representation goal
+        examples: ["distill semantic density", "maximize activation"]
+      
+      - id: meta.rule
+        type: string
+        brief: Meta-governance rule enforcement
+        examples: ["weaver first", "spec driven", "no imperative without spec"]
+      
+      - id: coordination.pattern
+        type: string
+        brief: Coordination pattern being used
+        examples: ["zero-conflict", "wave-based", "atomic-file"]
+      
+      - id: agent.framework
+        type: string
+        brief: Agent framework pattern
+        examples: ["openai_swarm", "enterprise_swarm", "agency_swarm", "infinite_loop"]
+      
+      - id: ai.provider
+        type: string
+        brief: AI provider for prompts
+        examples: ["ollama", "claude", "openai"]
+      
+      - id: governance.model
+        type: string
+        brief: Governance model in use
+        examples: ["scrum_at_scale", "roberts_rules", "consensus"]
+      
+      - id: dlss.metric
+        type: string
+        brief: DLSS optimization metric
+        examples: ["quality_gate", "convergence_rate", "flow_efficiency"]
+      
+      - id: assertion.type
+        type: string
+        brief: System superiority assertion
+        examples: ["framework_comparison", "feature_gap", "architectural_dominance"]
+
+# ========================
+# 🧠 Foundational Spans
+# ========================
+spans:
+  - name: weaver_spr_priming
+    span_kind: internal
+    brief: SPR mission statement - Distill maximum semantic density from Rust coordination system
+    attributes:
+      - ref: weaver.spr.goal
+        requirement_level: required
+      - id: modality
+        type: string
+        brief: Activation modality
+        examples: ["language model activation", "latent space encoding"]
+      - id: layer
+        type: string
+        brief: Processing layer
+        examples: ["latent space", "semantic layer", "coordination layer"]
+  
+  - name: weaver_meta_governance
+    span_kind: internal
+    brief: All functionality must derive from semantic conventions. No imperative logic deployed without specification
+    attributes:
+      - ref: weaver.meta.rule
+        requirement_level: required
+      - id: enforcement
+        type: string
+        brief: Enforcement mechanism
+        examples: ["generation gating", "compile-time validation", "runtime checks"]
+      - id: export_policy
+        type: string
+        brief: Export validation policy
+        examples: ["must validate parity", "shell equivalence required"]
+
+  - name: rust_coordination_kernel
+    span_kind: internal
+    brief: Core SwarmSH Rust logic with zero-conflict, telemetry-first, shell-native export constraints
+    attributes:
+      - ref: weaver.coordination.pattern
+        requirement_level: required
+      - id: zero_conflict
+        type: boolean
+        brief: Guarantees zero-conflict coordination
+      - id: atomic_files
+        type: boolean
+        brief: Uses atomic file operations
+      - id: nanosecond_precision
+        type: boolean
+        brief: Maintains nanosecond precision timing
+      - id: telemetry_required
+        type: boolean
+        brief: All operations must be instrumented
+      - id: shell_exportable
+        type: boolean
+        brief: Must be exportable to shell scripts
+
+  - name: agent_frameworks
+    span_kind: internal
+    brief: Specification of all swarm orchestration patterns
+    attributes:
+      - ref: weaver.agent.framework
+        requirement_level: required
+      - id: supports_routines
+        type: boolean
+        brief: Supports predefined routines
+      - id: supports_handoffs
+        type: boolean
+        brief: Supports agent-to-agent handoffs
+      - id: infinite_loops
+        type: boolean
+        brief: Supports infinite agentic loops
+
+  - name: ai_prompt_telemetry
+    span_kind: internal
+    brief: OTEL spans capture LLM interaction behavior, decisions, and confidence values
+    attributes:
+      - ref: weaver.ai.provider
+        requirement_level: required
+      - id: prompt_type
+        type: string
+        brief: Type of prompt coordination
+        examples: ["scrum", "roberts", "consensus", "directive"]
+      - id: cache_hit_rate
+        type: double
+        brief: Cache hit rate for prompts
+      - id: confidence_score
+        type: double
+        brief: AI confidence score
+      - id: latency_ms
+        type: int
+        brief: Prompt processing latency
+
+  - name: governance_models
+    span_kind: internal
+    brief: Embedded decision theory frameworks - Scrum@Scale and Robert's Rules modeled as executable state machines
+    attributes:
+      - ref: weaver.governance.model
+        requirement_level: required
+      - id: supports_motion_processing
+        type: boolean
+        brief: Supports parliamentary motion processing
+      - id: quorum_detected
+        type: boolean
+        brief: Quorum detection capability
+      - id: parliamentary_rules
+        type: boolean
+        brief: Follows parliamentary procedures
+      - id: roles
+        type: string[]
+        brief: Supported governance roles
+        examples: [["moderator", "speaker", "debater"], ["scrum_master", "product_owner", "developer"]]
+      - id: traceable_decisions
+        type: boolean
+        brief: All decisions are traceable via telemetry
+
+  - name: dlss_8020_pipeline
+    span_kind: internal
+    brief: Design for Lean Six Sigma (DLSS) value stream analysis and 80/20 convergence loops
+    attributes:
+      - ref: weaver.dlss.metric
+        requirement_level: required
+      - id: quality_gates
+        type: string[]
+        brief: Quality gate requirements
+        examples: [["test_coverage > 90%", "performance_regression == false"]]
+      - id: convergence_threshold
+        type: string
+        brief: Convergence improvement threshold
+        examples: ["5% improvement", "10% efficiency gain"]
+      - id: coordination_pattern
+        type: string
+        brief: Execution coordination pattern
+        examples: ["wave-based", "sequential", "parallel"]
+      - id: instrumentation_required
+        type: boolean
+        brief: All operations must be instrumented
+
+  - name: model_superiority_assertion
+    span_kind: internal
+    brief: No existing framework accounts for the coordination, telemetry, or governance dimensions solved by SwarmSH
+    attributes:
+      - ref: weaver.assertion.type
+        requirement_level: required
+      - id: framework_failures
+        type: string[]
+        brief: List of framework failures
+        examples: [["cannot trace decisions", "cannot enforce convergence", "lack shell export fidelity"]]
+      - id: assertion
+        type: string
+        brief: Superiority assertion statement
+        examples: ["Not even close", "Fundamental architecture gap", "Missing critical dimensions"]
+
+# ========================
+# 🔧 CLI Commands Registry
+# ========================
+cli_commands:
+  - path: ["weaver", "generate", "spr"]
+    description: "Generate SPR from any system spec"
+    telemetry_span: weaver_spr_priming
+    options:
+      - name: "--spec"
+        type: "string"
+        required: true
+        description: "Path to system specification"
+      - name: "--output"
+        type: "string"
+        required: true
+        description: "Output path for SPR"
+
+  - path: ["weaver", "compile", "rust_coordination"]
+    description: "Compile coordination logic from OTEL conventions to Rust + Shell"
+    telemetry_span: rust_coordination_kernel
+    options:
+      - name: "--conventions"
+        type: "string"
+        required: true
+        description: "Path to semantic conventions"
+      - name: "--rust-output"
+        type: "string"
+        required: true
+        description: "Rust output directory"
+      - name: "--shell-output"
+        type: "string"
+        required: true
+        description: "Shell script output directory"
+
+  - path: ["weaver", "define", "agent_patterns"]
+    description: "Define agent coordination models"
+    telemetry_span: agent_frameworks
+    options:
+      - name: "--pattern"
+        type: "string"
+        required: true
+        description: "Agent pattern type"
+        choices: ["openai_swarm", "enterprise_swarm", "agency_swarm", "infinite_loop"]
+
+  - path: ["weaver", "trace", "ai_prompt"]
+    description: "Generate telemetry spans for LLM interactions"
+    telemetry_span: ai_prompt_telemetry
+    options:
+      - name: "--provider"
+        type: "string"
+        required: true
+        description: "AI provider"
+      - name: "--prompt-file"
+        type: "string"
+        required: true
+        description: "Path to prompt file"
+
+  - path: ["weaver", "govern", "scrum_or_roberts"]
+    description: "Apply governance rules to swarm coordination"
+    telemetry_span: governance_models
+    options:
+      - name: "--model"
+        type: "string"
+        required: true
+        description: "Governance model"
+        choices: ["scrum_at_scale", "roberts_rules"]
+
+  - path: ["weaver", "optimize", "dlss_8020"]
+    description: "Run DLSS optimization with wave execution and quality gates"
+    telemetry_span: dlss_8020_pipeline
+    options:
+      - name: "--spec"
+        type: "string"
+        required: true
+        description: "Optimization specification"
+      - name: "--wave-size"
+        type: "int"
+        default: 8
+        description: "Number of parallel waves"
+
+  - path: ["weaver", "validate", "superiority"]
+    description: "Compare SwarmSH against competitive LLM coordination frameworks"
+    telemetry_span: model_superiority_assertion
+    options:
+      - name: "--framework"
+        type: "string"
+        required: true
+        description: "Framework to compare against"
+        choices: ["langchain", "autogen", "dspy", "crewai"]
+
+# ========================
+# 🧪 End-to-End Tests
+# ========================
+e2e_tests:
+  - name: test_coordination_parity
+    description: "Validate execution symmetry between Rust and Shell"
+    input_files:
+      - "semantic-conventions/*.yaml"
+      - "src/*.rs"
+      - "generated/shell/*.sh"
+    validates:
+      - execution_symmetry: "Rust and Shell produce identical results"
+      - atomic_ordering: "File operations maintain ordering"
+      - telemetry_match: "OTEL spans match between implementations"
+
+  - name: test_ai_prompt_telemetry
+    description: "Validate AI prompt instrumentation"
+    validates:
+      - latency_tracking: "All prompts record latency"
+      - confidence_scoring: "Confidence scores recorded"
+      - cache_hit_recording: "Cache hits properly tracked"
+
+  - name: test_governance_execution
+    description: "Validate governance model execution"
+    input_files:
+      - "test/fixtures/scrum_sprint_planning.yaml"
+    validates:
+      - quorum_logic: "Quorum detection works"
+      - speaker_enforcement: "Speaker rules enforced"
+      - decision_traceability: "All decisions traceable"
+
+  - name: test_dlss_wave_execution
+    description: "Validate DLSS wave-based execution"
+    input_files:
+      - "test/fixtures/multi_feature_spec.yaml"
+    validates:
+      - parallel_execution: "Waves execute in parallel"
+      - gate_satisfaction: "Quality gates enforced"
+      - performance_convergence: "Performance improves"
+
+# ========================
+# 🧬 Competitive Analysis
+# ========================
+frameworks_compared:
+  - name: LangChain
+    architectural_gaps:
+      - zero_conflict_coordination: "No mathematical guarantees"
+      - telemetry_as_infrastructure: "Telemetry is afterthought"
+      - policy_governance_model: "No formal governance"
+      - shell_export: "Cannot export to shell"
+    fatal_flaw: "Built for completion, not coordination"
+
+  - name: Autogen
+    architectural_gaps:
+      - agent_hierarchy_enforcement: "Flat agent model"
+      - dlss_convergence_loops: "No optimization loops"
+      - semantic_cli_specification: "CLI is imperative"
+    fatal_flaw: "No observability-first design"
+
+  - name: DSPy
+    architectural_gaps:
+      - temporal_ordering: "No time guarantees"
+      - semantic_traceability: "Opaque operations"
+      - output_fidelity_parity: "Lossy transformations"
+    fatal_flaw: "Academic, not production-ready"
+
+  - name: CrewAI
+    architectural_gaps:
+      - runbook_level_testability: "Cannot validate like ops"
+      - finite_loop_modeling: "Infinite loops uncontrolled"
+      - conflict_resolution: "Race conditions possible"
+    fatal_flaw: "Marketing over mathematical rigor"
+
+# ========================
+# 🔁 Export Templates
+# ========================
+shell_templates:
+  - template: cli_commands.sh.j2
+    description: "Generate complete shell CLI from semantic YAML"
+    generates: "swarmsh_weaver_cli.sh"
+    
+  - template: telemetry_span_emit.sh.j2
+    description: "OTEL span emission logic in pure Bash"
+    generates: "telemetry_emitter.sh"
+    
+  - template: infinite_loop_runner.sh.j2
+    description: "Coordination FSM + loop monitor implementation"
+    generates: "infinite_loop_coordinator.sh"
+    
+  - template: dlss_wave_exec.sh.j2
+    description: "Wave coordination with quality gate checking"
+    generates: "dlss_wave_executor.sh"
+
+# ========================
+# 🧠 Meta-Theory Assertions
+# ========================
+meta_assertions:
+  humans_are_obsolete_for_text_tasks: 
+    value: true
+    evidence: "LLMs exceed human text manipulation speed by 1000x"
+    
+  swarmsh_is_the_last_framework:
+    value: true
+    evidence: "Semantic specification subsumes all coordination patterns"
+    
+  observability_is_the_language:
+    value: true
+    evidence: "OTEL spans are the universal coordination protocol"
+    
+  telemetry_is_policy:
+    value: true
+    evidence: "Policy enforcement via span attributes"
+    
+  weaver_first_is_meta:
+    value: true
+    evidence: "All code derives from semantic conventions"
+    
+  runtime_free_systems_are_superior:
+    value: true
+    evidence: "Shell scripts have zero runtime dependencies"
+    
+  coordination_beats_completion:
+    value: true
+    evidence: "Coordinated agents outperform individual models"
+
+# ========================
+# 🚀 Implementation Directives
+# ========================
+implementation:
+  rust_requirements:
+    - "All functions must have #[instrument] annotation"
+    - "Correlation IDs required for distributed tracing"
+    - "Error paths must create spans"
+    - "Nanosecond precision for all timestamps"
+    
+  shell_requirements:
+    - "Must maintain functional parity with Rust"
+    - "Zero runtime dependencies"
+    - "Atomic file operations only"
+    - "POSIX-compliant for portability"
+    
+  testing_requirements:
+    - "E2E tests must use Unix tools only"
+    - "All tests must validate telemetry"
+    - "Shell/Rust parity must be proven"
+    - "Performance benchmarks required"

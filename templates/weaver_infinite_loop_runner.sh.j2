@@ -1,0 +1,364 @@
+#!/usr/bin/env bash
+# Weaver Infinite Loop Runner
+# Coordination FSM + Loop Monitor Implementation
+
+set -euo pipefail
+
+# Source telemetry functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "${SCRIPT_DIR}/telemetry_emitter.sh" 2>/dev/null || true
+
+# Configuration
+LOOP_STATE_DIR="${LOOP_STATE_DIR:-/tmp/weaver/loops}"
+LOOP_MAX_ITERATIONS="${LOOP_MAX_ITERATIONS:-1000}"
+LOOP_CONVERGENCE_THRESHOLD="${LOOP_CONVERGENCE_THRESHOLD:-0.05}"  # 5% improvement
+LOOP_QUALITY_GATES="${LOOP_QUALITY_GATES:-test_coverage:90,performance_regression:false}"
+
+# Ensure state directory exists
+mkdir -p "${LOOP_STATE_DIR}" 2>/dev/null || true
+
+# Loop state machine states
+declare -A LOOP_STATES=(
+    ["INITIALIZING"]="Loop is initializing"
+    ["RUNNING"]="Loop is actively running"
+    ["EVALUATING"]="Evaluating convergence criteria"
+    ["CONVERGED"]="Loop has converged"
+    ["FAILED"]="Loop has failed"
+    ["TERMINATED"]="Loop was terminated"
+)
+
+# Initialize loop state
+init_loop_state() {
+    local loop_id="$1"
+    local spec_file="$2"
+    local correlation_id="${3:-$(uuidgen 2>/dev/null || echo "loop-$$")}"
+    
+    emit_span_start "infinite_loop_init" "${correlation_id}"
+    
+    # Create loop state file
+    local state_file="${LOOP_STATE_DIR}/${loop_id}.state"
+    cat > "${state_file}" << EOF
+{
+  "loop_id": "${loop_id}",
+  "spec_file": "${spec_file}",
+  "state": "INITIALIZING",
+  "iteration": 0,
+  "start_time": $(date +%s),
+  "metrics": {
+    "quality_score": 0.0,
+    "convergence_rate": 0.0,
+    "error_count": 0
+  },
+  "correlation_id": "${correlation_id}"
+}
+EOF
+    
+    echo "Initialized loop: ${loop_id}"
+    emit_span_end "infinite_loop_init" "${correlation_id}"
+}
+
+# Read loop state
+read_loop_state() {
+    local loop_id="$1"
+    local state_file="${LOOP_STATE_DIR}/${loop_id}.state"
+    
+    if [[ ! -f "${state_file}" ]]; then
+        echo "{}"
+        return 1
+    fi
+    
+    cat "${state_file}"
+}
+
+# Update loop state
+update_loop_state() {
+    local loop_id="$1"
+    local field="$2"
+    local value="$3"
+    local state_file="${LOOP_STATE_DIR}/${loop_id}.state"
+    
+    if [[ ! -f "${state_file}" ]]; then
+        echo "Error: Loop state not found: ${loop_id}" >&2
+        return 1
+    fi
+    
+    # Use jq if available, otherwise sed
+    if command -v jq &>/dev/null; then
+        local tmp_file=$(mktemp)
+        jq ".${field} = ${value}" "${state_file}" > "${tmp_file}"
+        mv "${tmp_file}" "${state_file}"
+    else
+        # Fallback to sed for simple updates
+        sed -i.bak "s/\"${field}\": [^,}]*/\"${field}\": ${value}/" "${state_file}"
+    fi
+}
+
+# Execute loop iteration
+execute_loop_iteration() {
+    local loop_id="$1"
+    local iteration="$2"
+    local spec_file="$3"
+    local correlation_id="${4:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "loop_iteration" "${correlation_id}"
+    
+    echo "[LOOP ${loop_id}] Executing iteration ${iteration}"
+    
+    # Simulate work based on specification
+    # In real implementation, this would:
+    # 1. Read specification
+    # 2. Execute defined tasks
+    # 3. Collect metrics
+    # 4. Update outputs
+    
+    local work_duration=$((RANDOM % 3 + 1))
+    sleep "${work_duration}"
+    
+    # Generate mock metrics
+    local quality_score=$(awk -v iter="${iteration}" 'BEGIN { printf "%.2f", 0.5 + (iter * 0.05) + (rand() * 0.1) }')
+    local error_rate=$(awk -v iter="${iteration}" 'BEGIN { printf "%.2f", 0.2 - (iter * 0.01) + (rand() * 0.05) }')
+    
+    # Update metrics
+    update_loop_state "${loop_id}" "metrics.quality_score" "${quality_score}"
+    update_loop_state "${loop_id}" "metrics.error_rate" "${error_rate}"
+    
+    emit_span_end "loop_iteration" "${correlation_id}"
+    
+    echo "${quality_score}"
+}
+
+# Evaluate convergence
+evaluate_convergence() {
+    local loop_id="$1"
+    local current_score="$2"
+    local previous_score="${3:-0}"
+    local correlation_id="${4:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "evaluate_convergence" "${correlation_id}"
+    
+    # Calculate improvement rate
+    local improvement=0
+    if (( $(echo "${previous_score} > 0" | bc -l) )); then
+        improvement=$(awk -v curr="${current_score}" -v prev="${previous_score}" \
+            'BEGIN { printf "%.4f", (curr - prev) / prev }')
+    fi
+    
+    echo "[LOOP ${loop_id}] Convergence check:"
+    echo "  - Current score: ${current_score}"
+    echo "  - Previous score: ${previous_score}"
+    echo "  - Improvement: $(awk -v imp="${improvement}" 'BEGIN { printf "%.2f%%", imp * 100 }')"
+    
+    # Check if converged
+    local converged=false
+    if (( $(echo "${improvement} < ${LOOP_CONVERGENCE_THRESHOLD}" | bc -l) )); then
+        echo "  - Status: CONVERGED (improvement below threshold)"
+        converged=true
+    fi
+    
+    emit_span_end "evaluate_convergence" "${correlation_id}"
+    
+    echo "${converged}"
+}
+
+# Check quality gates
+check_quality_gates() {
+    local loop_id="$1"
+    local correlation_id="${2:-${CORRELATION_ID:-}}"
+    
+    emit_span_start "check_quality_gates" "${correlation_id}"
+    
+    echo "[LOOP ${loop_id}] Checking quality gates..."
+    
+    # Parse quality gates
+    IFS=',' read -ra gates <<< "${LOOP_QUALITY_GATES}"
+    local all_passed=true
+    
+    for gate in "${gates[@]}"; do
+        IFS=':' read -r metric threshold <<< "${gate}"
+        
+        # In real implementation, would check actual metrics
+        # For demo, simulate gate checks
+        local passed=$((RANDOM % 10 > 2))  # 80% pass rate
+        
+        if [[ ${passed} -eq 1 ]]; then
+            echo "  ✓ ${metric} >= ${threshold}"
+        else
+            echo "  ✗ ${metric} < ${threshold}"
+            all_passed=false
+        fi
+    done
+    
+    emit_span_end "check_quality_gates" "${correlation_id}"
+    
+    echo "${all_passed}"
+}
+
+# Main loop runner
+run_infinite_loop() {
+    local loop_id="${1:-loop-$(date +%s)}"
+    local spec_file="${2:-spec.yaml}"
+    local output_dir="${3:-./output}"
+    local correlation_id="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "loop-$$")}"
+    
+    echo "=== Weaver Infinite Loop Runner ==="
+    echo "Loop ID: ${loop_id}"
+    echo "Specification: ${spec_file}"
+    echo "Output directory: ${output_dir}"
+    echo "Correlation ID: ${correlation_id}"
+    echo ""
+    
+    # Initialize loop
+    init_loop_state "${loop_id}" "${spec_file}" "${correlation_id}"
+    update_loop_state "${loop_id}" "state" '"RUNNING"'
+    
+    # Main loop
+    local iteration=0
+    local previous_score=0
+    local converged=false
+    
+    while [[ ${iteration} -lt ${LOOP_MAX_ITERATIONS} && "${converged}" == "false" ]]; do
+        iteration=$((iteration + 1))
+        update_loop_state "${loop_id}" "iteration" "${iteration}"
+        
+        # Execute iteration
+        local current_score=$(execute_loop_iteration "${loop_id}" "${iteration}" "${spec_file}" "${correlation_id}")
+        
+        # Check quality gates every 5 iterations
+        if [[ $((iteration % 5)) -eq 0 ]]; then
+            local gates_passed=$(check_quality_gates "${loop_id}" "${correlation_id}")
+            if [[ "${gates_passed}" != "true" ]]; then
+                echo "[LOOP ${loop_id}] Quality gates failed at iteration ${iteration}"
+                update_loop_state "${loop_id}" "state" '"FAILED"'
+                break
+            fi
+        fi
+        
+        # Evaluate convergence every 10 iterations
+        if [[ $((iteration % 10)) -eq 0 && ${iteration} -gt 10 ]]; then
+            update_loop_state "${loop_id}" "state" '"EVALUATING"'
+            converged=$(evaluate_convergence "${loop_id}" "${current_score}" "${previous_score}" "${correlation_id}")
+            
+            if [[ "${converged}" == "true" ]]; then
+                update_loop_state "${loop_id}" "state" '"CONVERGED"'
+                break
+            else
+                update_loop_state "${loop_id}" "state" '"RUNNING"'
+            fi
+        fi
+        
+        previous_score="${current_score}"
+    done
+    
+    # Final state
+    local final_state=$(read_loop_state "${loop_id}" | grep -o '"state": "[^"]*"' | cut -d'"' -f4)
+    echo ""
+    echo "=== Loop Completed ==="
+    echo "Final state: ${final_state}"
+    echo "Total iterations: ${iteration}"
+    echo "Final score: ${current_score}"
+    
+    # Generate output
+    mkdir -p "${output_dir}"
+    read_loop_state "${loop_id}" > "${output_dir}/${loop_id}_final_state.json"
+    
+    # Export telemetry
+    export_spans_to_collector
+}
+
+# Wave-based parallel execution
+run_wave_execution() {
+    local spec_file="$1"
+    local wave_size="${2:-8}"
+    local correlation_id="${CORRELATION_ID:-$(uuidgen 2>/dev/null || echo "wave-$$")}"
+    
+    emit_span_start "wave_execution" "${correlation_id}"
+    
+    echo "=== Wave-Based Execution ==="
+    echo "Wave size: ${wave_size}"
+    echo "Specification: ${spec_file}"
+    echo ""
+    
+    # Launch parallel loops
+    local pids=()
+    for ((i=1; i<=wave_size; i++)); do
+        local loop_id="wave-${correlation_id}-${i}"
+        echo "Launching loop ${i}/${wave_size}: ${loop_id}"
+        
+        run_infinite_loop "${loop_id}" "${spec_file}" "./output/wave${i}" &
+        pids+=($!)
+    done
+    
+    # Wait for all loops to complete
+    echo ""
+    echo "Waiting for wave completion..."
+    local failed=0
+    for pid in "${pids[@]}"; do
+        if wait "${pid}"; then
+            echo "Loop PID ${pid} completed successfully"
+        else
+            echo "Loop PID ${pid} failed"
+            failed=$((failed + 1))
+        fi
+    done
+    
+    emit_span_end "wave_execution" "${correlation_id}"
+    
+    echo ""
+    echo "Wave execution completed: $((wave_size - failed))/${wave_size} succeeded"
+}
+
+# Command dispatcher
+case "${1:-help}" in
+    run)
+        shift
+        run_infinite_loop "$@"
+        ;;
+    wave)
+        shift
+        run_wave_execution "$@"
+        ;;
+    state)
+        if [[ -n "${2:-}" ]]; then
+            read_loop_state "$2" | jq . 2>/dev/null || cat
+        else
+            echo "Usage: $0 state <loop_id>"
+            exit 1
+        fi
+        ;;
+    list)
+        echo "Active loops:"
+        ls -la "${LOOP_STATE_DIR}"/*.state 2>/dev/null | while read -r line; do
+            local file=$(echo "${line}" | awk '{print $NF}')
+            local loop_id=$(basename "${file}" .state)
+            local state=$(grep -o '"state": "[^"]*"' "${file}" | cut -d'"' -f4)
+            echo "  - ${loop_id}: ${state}"
+        done
+        ;;
+    help|*)
+        cat << EOF
+Weaver Infinite Loop Runner
+
+Usage: $0 <command> [options]
+
+Commands:
+  run [loop_id] [spec] [output_dir]    Run a single infinite loop
+  wave <spec> [wave_size]              Run wave-based parallel execution
+  state <loop_id>                      Show loop state
+  list                                 List all loops
+  help                                 Show this help
+
+Environment Variables:
+  LOOP_STATE_DIR                   State directory (default: /tmp/weaver/loops)
+  LOOP_MAX_ITERATIONS              Max iterations (default: 1000)
+  LOOP_CONVERGENCE_THRESHOLD       Convergence threshold (default: 0.05)
+  LOOP_QUALITY_GATES              Quality gates (default: test_coverage:90,performance_regression:false)
+
+Examples:
+  $0 run my-loop spec.yaml ./output
+  $0 wave spec.yaml 16
+  $0 state my-loop
+  $0 list
+
+EOF
+        ;;
+esac
