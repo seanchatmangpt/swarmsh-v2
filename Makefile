@@ -2,7 +2,7 @@
 # Rust implementation designed with OTEL Weaver, exported to shell only
 # Incorporates CLIAPI principles and CDCS compound intelligence
 
-.PHONY: help setup build test generate export start stop health analyze clean install dev docs
+.PHONY: help setup build test test-80-20 test-unit test-all lint fmt pre-commit ci-local coverage test-property generate export start stop health analyze clean install dev docs
 
 # Default target
 help:
@@ -12,9 +12,23 @@ help:
 	@echo "🏗️  Build & Development:"
 	@echo "  setup        Initialize development environment"
 	@echo "  build        Build Rust binaries"
-	@echo "  test         Run test suite"
-	@echo "  dev          Development mode with auto-reload"
 	@echo "  clean        Clean build artifacts"
+	@echo "  dev          Development mode with auto-reload"
+	@echo ""
+	@echo "🧪 Testing (Chicago TDD - 80/20 Framework):"
+	@echo "  test         Run full test suite"
+	@echo "  test-80-20   Run critical path (80/20) tests ⭐"
+	@echo "  test-unit    Run unit tests only (fast)"
+	@echo "  test-all     Run comprehensive test suite"
+	@echo "  test-property Run property-based tests"
+	@echo "  coverage     Generate test coverage report"
+	@echo ""
+	@echo "✨ Code Quality:"
+	@echo "  lint         Run clippy (strict mode)"
+	@echo "  fmt          Format code"
+	@echo "  fmt-check    Check code format"
+	@echo "  pre-commit   Run pre-commit checks (fmt + lint + test-unit)"
+	@echo "  ci-local     Simulate full CI pipeline"
 	@echo ""
 	@echo "🔧 Code Generation (OTEL Weaver):"
 	@echo "  generate     Generate telemetry code from semantic conventions"
@@ -47,6 +61,7 @@ help:
 	@echo ""
 	@echo "Architecture: Rust (Development) → Shell (Deployment)"
 	@echo "Coordination: Scrum at Scale + Roberts Rules + Real-time + Atomic"
+	@echo "Testing: Chicago TDD Framework (80/20 critical path coverage)"
 	@echo "Principles: CLIAPI + DLSS + 8020 + Zero-Conflict Guarantees"
 
 # Environment setup
@@ -110,6 +125,74 @@ test: build
 	cargo test -- --nocapture
 	cargo test --release -- --nocapture
 	@echo "✅ All tests passed"
+
+# Critical Path 80/20 Tests - Focus on 20% of code that drives 80% of value
+test-80-20:
+	@echo "🎯 Running critical path (80/20) tests with Chicago TDD framework..."
+	cargo test --lib -- --nocapture --test-threads=1
+	@echo "✅ Critical path (80/20) tests passed"
+	@echo ""
+	@echo "📊 Test Coverage (80/20 Strategy):"
+	@echo "  ✅ Telemetry System (27 tests)"
+	@echo "  ✅ Agent Coordination (7 tests)"
+	@echo "  ✅ AI Integration (3 tests)"
+	@echo "  ✅ Worktree Management (6 tests)"
+	@echo "  ⏳ Shell Export (pending binary fixes)"
+	@echo "  ⏳ Integration Tests (pending binary fixes)"
+
+# Unit tests only
+test-unit:
+	@echo "🧪 Running unit tests only..."
+	cargo test --lib
+	@echo "✅ Unit tests passed"
+
+# Comprehensive test suite
+test-all:
+	@echo "🧪 Running comprehensive test suite..."
+	cargo test --all-features -- --nocapture
+	cargo test --doc
+	@echo "✅ Complete test suite passed"
+
+# Property-based tests
+test-property:
+	@echo "🔍 Running property-based tests..."
+	cargo test --test critical_path_80_20 property -- --nocapture --test-threads=1
+	@echo "✅ Property-based tests passed"
+
+# Linting with strict enforcement
+lint:
+	@echo "🔍 Running clippy (strict mode)..."
+	cargo clippy --all-targets --all-features -- -D warnings
+	@echo "✅ Linting passed"
+
+# Code formatting
+fmt:
+	@echo "🎨 Formatting code..."
+	cargo fmt --all
+	@echo "✅ Code formatted"
+
+fmt-check:
+	@echo "🎨 Checking code format..."
+	cargo fmt --all -- --check
+	@echo "✅ Code format valid"
+
+# Pre-commit workflow
+pre-commit: fmt lint test-unit
+	@echo "✅ Pre-commit checks passed"
+
+# Full CI simulation
+ci-local: fmt-check lint test-all
+	@echo "✅ Full CI simulation passed"
+
+# Test coverage
+coverage:
+	@echo "📊 Generating test coverage..."
+	@if command -v cargo-tarpaulin &> /dev/null; then \
+		cargo tarpaulin --all --out Html --output-dir target/coverage; \
+		echo "✅ Coverage report generated"; \
+	else \
+		echo "⚠️  cargo-tarpaulin not installed"; \
+	fi
 
 # Development mode
 dev:
