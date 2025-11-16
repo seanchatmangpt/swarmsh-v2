@@ -11,6 +11,25 @@ SwarmSH v2 provides a file-based distributed work coordination engine with built
 
 ---
 
+## 📖 Documentation Overview
+
+**Start here**: Choose what you need to learn:
+
+| **I want to...** | **Go to** | **Time** |
+|---|---|---|
+| Get started immediately | [GETTING_STARTED.md](./GETTING_STARTED.md) | 5 min |
+| See API documentation | [API_REFERENCE.md](./API_REFERENCE.md) | 10 min |
+| Fix a problem | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | 10-30 min |
+| Understand failure modes | [FMEA_ANALYSIS.md](./FMEA_ANALYSIS.md) | 15 min |
+| Prevent common mistakes | [POKA_YOKE_GUIDE.md](./POKA_YOKE_GUIDE.md) | 20 min |
+| Respond to failures | [FMEA_RISK_MITIGATION.md](./FMEA_RISK_MITIGATION.md) | 30-60 min |
+| Read complete guide | [README.md](./README.md) (this page) | 45 min |
+| Check what's changed | [CHANGELOG.md](./CHANGELOG.md) | 5 min |
+
+**Key Principle**: Read this README for **conceptual understanding**, but use the specialized docs above for **practical tasks**.
+
+---
+
 ## ⚡ Quick Facts: What This Project Actually Delivers
 
 ### ✅ What Works Today
@@ -820,29 +839,62 @@ find ./coordination_data -name "*.lock" -mtime +1 -delete
 
 # 🚀 Getting Help
 
-## Documentation
-- **Core Library Docs**: `cargo doc --open`
-- **Examples**: See `/examples` directory
-- **Tests**: See `/tests` directory for usage patterns
+## Documentation Structure (Diataxis Framework)
 
-## Issues & Questions
-1. Check existing GitHub issues
-2. Review `/tests` for code examples
-3. Examine `/examples` for common patterns
-4. Run tests: `cargo test --lib`
+We organize documentation by purpose to help you find what you need:
+
+### 1. **Tutorials** - Learn by doing
+- [GETTING_STARTED.md](./GETTING_STARTED.md) - Installation and first steps
+- [README.md - Tutorials section](#-tutorials) - Step-by-step guides
+
+### 2. **How-To Guides** - Solve specific problems
+- [README.md - How-To Guides](#-how-to-guides) - Common tasks
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Fix common issues
+- [FMEA_RISK_MITIGATION.md](./FMEA_RISK_MITIGATION.md) - Respond to failures
+- [POKA_YOKE_GUIDE.md](./POKA_YOKE_GUIDE.md) - Prevent mistakes
+
+### 3. **Reference** - Look up technical details
+- [API_REFERENCE.md](./API_REFERENCE.md) - Complete API documentation
+- [README.md - Reference section](#-reference) - Configuration and file structure
+- [FMEA_ANALYSIS.md](./FMEA_ANALYSIS.md) - Failure mode definitions
+
+### 4. **Explanation** - Understand concepts
+- [README.md - Explanation section](#-explanation) - Deep dives on design
+- [POKA_YOKE_GUIDE.md](./POKA_YOKE_GUIDE.md) - 80/20 dark matter analysis
+- [Context documentation](./context/) - Project status and vision
+
+## Quick Help
+
+**I'm new**: Start with [GETTING_STARTED.md](./GETTING_STARTED.md) (5 min)
+
+**Something's broken**: Check [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) (10 min)
+
+**I need API docs**: See [API_REFERENCE.md](./API_REFERENCE.md) (10 min)
+
+**I want to prevent bugs**: Read [POKA_YOKE_GUIDE.md](./POKA_YOKE_GUIDE.md) (20 min)
+
+**I need to fix a production issue**: Follow [FMEA_RISK_MITIGATION.md](./FMEA_RISK_MITIGATION.md) (30 min)
+
+## Research
+
+- **Code Examples**: See `/examples` directory
+- **Tests**: See `/tests` directory for patterns
+- **Generated Code**: `cargo doc --open` for library documentation
+- **OTEL Conventions**: See `/semantic-conventions` for telemetry definitions
 
 ## Contributing
 
 **To contribute**: Focus on:
-- Fixing binary compilation issues
-- Adding concurrent conflict tests
-- Improving documentation
-- Adding real-world examples
+- Fixing binary compilation issues (see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#compilation-issues))
+- Adding concurrent conflict tests (see [POKA_YOKE_GUIDE.md](./POKA_YOKE_GUIDE.md))
+- Improving documentation (follow Diataxis framework)
+- Adding real-world examples to `/examples`
 
 **Avoid**:
-- Adding features that increase complexity
+- Adding features without updating FMEA analysis
+- Making claims not backed by tests
 - Removing file-based coordination (core value)
-- Marketing claims without implementation
+- Adding complexity without risk analysis
 
 ---
 
