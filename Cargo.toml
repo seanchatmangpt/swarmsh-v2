@@ -187,6 +187,7 @@ fake = "2.9"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 insta = { version = "1.39", features = ["json"] }
+rand = "0.8"
 
 [[bench]]
 name = "worktree_benchmarks"
