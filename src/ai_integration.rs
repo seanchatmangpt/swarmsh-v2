@@ -14,7 +14,7 @@ use ollama_rs::{
 };
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use tokio_stream::{Stream, StreamExt};
+use tokio_stream::Stream;
 use tracing::{debug, instrument};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -249,9 +249,6 @@ impl OllamaClient {
         );
         let request = GenerationRequest::new(self.default_model.clone(), prompt);
 
-        // ollama-rs streaming APIs have changed across versions. Until the
-        // pinned dependency exposes a stable stream used here, perform one
-        // ordinary generation and expose it as a one-item stream.
         let response = self
             .ollama
             .generate(request)
