@@ -1,7 +1,8 @@
 use std::{collections::HashSet, sync::Arc, time::SystemTime};
 
 use swarmsh_v2::{
-    coordination::{AgentSpec, WorkItem, WorkQueue},
+    coordination::{AgentCoordinator, AgentSpec, WorkItem, WorkQueue},
+    telemetry::{TelemetryConfig, TelemetryManager, TelemetryMode},
     SwarmError,
 };
 
@@ -134,9 +135,31 @@ async fn incompatible_work_is_not_actuated() {
     assert_eq!(admitted.id, "requires-rust");
 }
 
-#[test]
-fn duplicate_registration_has_a_typed_refusal_variant() {
-    let refusal = SwarmError::AlreadyExists("Agent already registered".to_string());
-    assert!(matches!(refusal, SwarmError::AlreadyExists(_)));
-    assert_eq!(refusal.to_string(), "Already exists: Agent already registered");
+#[tokio::test]
+async fn duplicate_registration_is_refused_by_the_real_coordinator() {
+    let telemetry = Arc::new(
+        TelemetryManager::with_config(TelemetryConfig {
+            mode: TelemetryMode::Disabled,
+            enable_timing: false,
+            ..TelemetryConfig::default()
+        })
+        .await
+        .expect("disabled telemetry must initialize"),
+    );
+    let queue = Arc::new(WorkQueue::new(None).await.expect("work queue must initialize"));
+    let coordinator = AgentCoordinator::new(telemetry, queue)
+        .await
+        .expect("coordinator must initialize");
+
+    let spec = agent(10_000);
+    coordinator
+        .register_agent(spec.clone())
+        .await
+        .expect("first registration must be admitted");
+
+    let duplicate = coordinator.register_agent(spec).await;
+    assert!(
+        matches!(duplicate, Err(SwarmError::AlreadyExists(_))),
+        "the second registration of the same identity must be a typed refusal"
+    );
 }
