@@ -36,6 +36,9 @@ cargo test --locked --all-features --test completion_concurrency -- --nocapture
 echo '==> documentation'
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --all-features --no-deps
 
+echo '==> Weaver provenance replay'
+bash scripts/verify-weaver.sh
+
 echo '==> shell export contract'
 bash scripts/verify-shell-export.sh
 
