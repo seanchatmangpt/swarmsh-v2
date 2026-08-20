@@ -38,7 +38,13 @@ jobs:
           cargo --version
 
       - name: Completion-surface formatting
-        run: rustfmt --edition 2021 --check tests/completion_acceptance.rs tests/completion_concurrency.rs
+        run: |
+          rustfmt --edition 2021 --check \
+            src/lib.rs \
+            src/coordination.rs \
+            src/ai_integration.rs \
+            tests/completion_acceptance.rs \
+            tests/completion_concurrency.rs
 
       - name: Compile every target and feature
         run: cargo check --locked --all-targets --all-features
@@ -52,6 +58,9 @@ jobs:
       - name: Integration tests
         run: cargo test --locked --all-features --tests
 
+      - name: Coordinator acceptance
+        run: cargo test --locked --all-features --test completion_acceptance -- --nocapture
+
       - name: Concurrent work-claim acceptance
         run: cargo test --locked --all-features --test completion_concurrency -- --nocapture
 
@@ -59,6 +68,21 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --locked --all-features --no-deps
+
+  weaver:
+    name: Weaver provenance replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Pin OpenTelemetry Weaver 0.25.1
+        uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.25.1
+
+      - name: Validate and replay generated projections
+        run: bash scripts/verify-weaver.sh
 
   shell-export:
     name: Shell export manufacture
@@ -120,7 +144,7 @@ jobs:
   receipt:
     name: Completion receipt
     if: always()
-    needs: [rust, shell-export, claims, smoke]
+    needs: [rust, weaver, shell-export, claims, smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,6 +154,7 @@ jobs:
       - name: Emit machine-readable receipt
         env:
           RUST_RESULT: ${{ needs.rust.result }}
+          WEAVER_RESULT: ${{ needs.weaver.result }}
           SHELL_RESULT: ${{ needs.shell-export.result }}
           CLAIMS_RESULT: ${{ needs.claims.result }}
           SMOKE_RESULT: ${{ needs.smoke.result }}
@@ -139,6 +164,7 @@ jobs:
           import json, os
           results = {
               "rust": os.environ["RUST_RESULT"],
+              "weaver": os.environ["WEAVER_RESULT"],
               "shell_export": os.environ["SHELL_RESULT"],
               "claims": os.environ["CLAIMS_RESULT"],
               "smoke": os.environ["SMOKE_RESULT"],
@@ -169,11 +195,13 @@ jobs:
       - name: Enforce aggregate standing
         env:
           RUST_RESULT: ${{ needs.rust.result }}
+          WEAVER_RESULT: ${{ needs.weaver.result }}
           SHELL_RESULT: ${{ needs.shell-export.result }}
           CLAIMS_RESULT: ${{ needs.claims.result }}
           SMOKE_RESULT: ${{ needs.smoke.result }}
         run: |
           test "$RUST_RESULT" = success
+          test "$WEAVER_RESULT" = success
           test "$SHELL_RESULT" = success
           test "$CLAIMS_RESULT" = success
           test "$SMOKE_RESULT" = success
