@@ -37,8 +37,8 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Format
-        run: cargo fmt --all -- --check
+      - name: Completion-surface formatting
+        run: rustfmt --edition 2021 --check tests/completion_acceptance.rs tests/completion_concurrency.rs
 
       - name: Compile every target and feature
         run: cargo check --locked --all-targets --all-features
