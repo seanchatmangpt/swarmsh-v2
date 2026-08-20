@@ -15,6 +15,16 @@ fn agent(id: usize) -> AgentSpec {
     }
 }
 
+fn work(id: &str, priority: f64, requirements: Vec<&str>) -> WorkItem {
+    WorkItem {
+        id: id.to_string(),
+        priority,
+        requirements: requirements.into_iter().map(str::to_string).collect(),
+        estimated_duration_ms: 1,
+        created_at: SystemTime::now(),
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn concurrent_claims_are_unique_and_exhaustive() {
     const WORK_ITEMS: usize = 256;
@@ -23,13 +33,11 @@ async fn concurrent_claims_are_unique_and_exhaustive() {
     let queue = Arc::new(WorkQueue::new(None).await.expect("queue"));
     for id in 0..WORK_ITEMS {
         queue
-            .add_work(WorkItem {
-                id: format!("completion-work-{id}"),
-                priority: (WORK_ITEMS - id) as f64,
-                requirements: Vec::new(),
-                estimated_duration_ms: 1,
-                created_at: SystemTime::now(),
-            })
+            .add_work(work(
+                &format!("completion-work-{id}"),
+                (WORK_ITEMS - id) as f64,
+                Vec::new(),
+            ))
             .await
             .expect("add work");
     }
@@ -72,13 +80,7 @@ async fn concurrent_claims_are_unique_and_exhaustive() {
 async fn capability_mismatch_does_not_consume_work() {
     let queue = WorkQueue::new(None).await.expect("queue");
     queue
-        .add_work(WorkItem {
-            id: "specialized-work".to_string(),
-            priority: 1.0,
-            requirements: vec!["rust".to_string()],
-            estimated_duration_ms: 1,
-            created_at: SystemTime::now(),
-        })
+        .add_work(work("specialized-work", 1.0, vec!["rust"]))
         .await
         .expect("add work");
 
@@ -98,4 +100,66 @@ async fn capability_mismatch_does_not_consume_work() {
         .expect("claim")
         .expect("work preserved for capable agent");
     assert_eq!(claimed.id, "specialized-work");
+}
+
+#[tokio::test]
+async fn highest_priority_compatible_work_is_claimed_first() {
+    let queue = WorkQueue::new(None).await.expect("queue");
+    queue
+        .add_work(work("low", 1.0, Vec::new()))
+        .await
+        .expect("low");
+    queue
+        .add_work(work("high", 100.0, Vec::new()))
+        .await
+        .expect("high");
+    queue
+        .add_work(work("middle", 10.0, Vec::new()))
+        .await
+        .expect("middle");
+
+    let spec = agent(3);
+    let first = queue
+        .get_work_for_agent(&spec)
+        .await
+        .expect("claim")
+        .expect("first work");
+    let second = queue
+        .get_work_for_agent(&spec)
+        .await
+        .expect("claim")
+        .expect("second work");
+    let third = queue
+        .get_work_for_agent(&spec)
+        .await
+        .expect("claim")
+        .expect("third work");
+
+    assert_eq!([first.id, second.id, third.id], ["high", "middle", "low"]);
+}
+
+#[tokio::test]
+async fn duplicate_work_ids_are_refused_at_admission() {
+    let queue = WorkQueue::new(None).await.expect("queue");
+    queue
+        .add_work(work("duplicate", 1.0, Vec::new()))
+        .await
+        .expect("first admission");
+    let error = queue
+        .add_work(work("duplicate", 2.0, Vec::new()))
+        .await
+        .expect_err("duplicate id must be refused");
+    assert!(error.to_string().contains("already exists"));
+}
+
+#[tokio::test]
+async fn non_finite_priority_is_refused() {
+    let queue = WorkQueue::new(None).await.expect("queue");
+    for priority in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let error = queue
+            .add_work(work("bad-priority", priority, Vec::new()))
+            .await
+            .expect_err("non-finite priority must be refused");
+        assert!(error.to_string().contains("finite"));
+    }
 }
