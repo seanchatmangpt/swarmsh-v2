@@ -2,7 +2,9 @@ name: SwarmSH v2 Completion Gate
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - 'finish/**'
   pull_request:
     branches: [master]
   workflow_dispatch:
