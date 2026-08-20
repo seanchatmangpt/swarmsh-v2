@@ -21,7 +21,11 @@ async fn concurrent_work_claims_are_exactly_once() {
     const WORK_ITEMS: usize = 256;
     const AGENTS: usize = 32;
 
-    let queue = Arc::new(WorkQueue::new(None).await.expect("work queue must initialize"));
+    let queue = Arc::new(
+        WorkQueue::new(None)
+            .await
+            .expect("work queue must initialize"),
+    );
 
     for id in 0..WORK_ITEMS {
         queue
