@@ -92,7 +92,9 @@ async fn concurrent_work_claims_are_exactly_once() {
 
 #[tokio::test]
 async fn incompatible_work_is_not_actuated() {
-    let queue = WorkQueue::new(None).await.expect("work queue must initialize");
+    let queue = WorkQueue::new(None)
+        .await
+        .expect("work queue must initialize");
 
     queue
         .add_work(WorkItem {
@@ -150,7 +152,11 @@ async fn duplicate_registration_is_refused_by_the_real_coordinator() {
         .await
         .expect("disabled telemetry must initialize"),
     );
-    let queue = Arc::new(WorkQueue::new(None).await.expect("work queue must initialize"));
+    let queue = Arc::new(
+        WorkQueue::new(None)
+            .await
+            .expect("work queue must initialize"),
+    );
     let coordinator = AgentCoordinator::new(telemetry, queue)
         .await
         .expect("coordinator must initialize");
