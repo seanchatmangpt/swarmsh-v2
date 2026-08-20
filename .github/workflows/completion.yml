@@ -24,7 +24,7 @@ jobs:
   rust:
     name: Rust exact-head verification
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +37,8 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Completion-surface formatting
-        run: rustfmt --edition 2021 --check tests/completion_acceptance.rs
+      - name: Format
+        run: cargo fmt --all -- --check
 
       - name: Compile every target and feature
         run: cargo check --locked --all-targets --all-features
@@ -51,3 +51,129 @@ jobs:
 
       - name: Integration tests
         run: cargo test --locked --all-features --tests
+
+      - name: Concurrent work-claim acceptance
+        run: cargo test --locked --all-features --test completion_concurrency -- --nocapture
+
+      - name: Documentation is warning-free
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --locked --all-features --no-deps
+
+  shell-export:
+    name: Shell export manufacture
+    needs: rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Pin stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Manufacture and validate shell export
+        run: bash scripts/verify-shell-export.sh
+
+  claims:
+    name: Claims and provenance hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify completion path is fail-closed
+        run: bash scripts/verify-claims.sh
+
+  smoke:
+    name: Binary smoke surface
+    needs: rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Pin stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build declared binaries
+        run: cargo build --locked --all-features --bins
+
+      - name: Exporter command surface
+        run: cargo run --locked --all-features --bin swarmsh-exporter -- list
+
+      - name: Coordinator help surface
+        run: cargo run --locked --all-features --bin swarmsh-coordinator -- --help
+
+      - name: Agent help surface
+        run: cargo run --locked --all-features --bin swarmsh-agent -- --help
+
+  receipt:
+    name: Completion receipt
+    if: always()
+    needs: [rust, shell-export, claims, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Emit machine-readable receipt
+        env:
+          RUST_RESULT: ${{ needs.rust.result }}
+          SHELL_RESULT: ${{ needs.shell-export.result }}
+          CLAIMS_RESULT: ${{ needs.claims.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: |
+          mkdir -p .completion
+          python3 - <<'PY'
+          import json, os
+          results = {
+              "rust": os.environ["RUST_RESULT"],
+              "shell_export": os.environ["SHELL_RESULT"],
+              "claims": os.environ["CLAIMS_RESULT"],
+              "smoke": os.environ["SMOKE_RESULT"],
+          }
+          standing = "ALIVE" if all(v == "success" for v in results.values()) else "BUILD_BROKEN"
+          receipt = {
+              "schema": "swarmsh-v2/completion-receipt/v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "head_sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "results": results,
+              "standing": standing,
+          }
+          with open('.completion/receipt.json', 'w', encoding='utf-8') as fh:
+              json.dump(receipt, fh, indent=2, sort_keys=True)
+              fh.write('\n')
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swarmsh-v2-completion-receipt
+          path: .completion/receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce aggregate standing
+        env:
+          RUST_RESULT: ${{ needs.rust.result }}
+          SHELL_RESULT: ${{ needs.shell-export.result }}
+          CLAIMS_RESULT: ${{ needs.claims.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: |
+          test "$RUST_RESULT" = success
+          test "$SHELL_RESULT" = success
+          test "$CLAIMS_RESULT" = success
+          test "$SMOKE_RESULT" = success
