@@ -84,6 +84,15 @@ jobs:
       - name: Validate and replay generated projections
         run: bash scripts/verify-weaver.sh
 
+      - name: Preserve exact Weaver replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarmsh-v2-weaver-replay
+          path: .weaver-replay/
+          if-no-files-found: error
+          retention-days: 30
+
   shell-export:
     name: Shell export manufacture
     needs: rust
