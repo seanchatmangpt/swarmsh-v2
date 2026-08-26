@@ -5,6 +5,7 @@ metrics:
     instrument: gauge
     unit: '1'
     stability: development
+    requirement_level: recommended
     attributes:
       - ref: swarmsh.worktree.name
         requirement_level: required
