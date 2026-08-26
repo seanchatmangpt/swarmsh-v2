@@ -1,0 +1,22 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.worktree.coordination.participant_count
+    type: int
+    stability: development
+    brief: Number of worktrees participating in a coordination operation.
+    examples: [2, 5, 12]
+  - key: swarmsh.worktree.coordination.consensus_required
+    type: boolean
+    stability: development
+    brief: Whether the coordination decision requires consensus.
+    examples: [true, false]
+  - key: swarmsh.worktree.coordination.voting_threshold
+    type: double
+    stability: development
+    brief: Voting threshold used for Roberts Rules coordination.
+    examples: [0.5, 0.67, 0.75]
+  - key: swarmsh.worktree.coordination.latency_ms
+    type: int
+    stability: development
+    brief: Observed coordination latency in milliseconds.
+    examples: [5, 150, 1000]
