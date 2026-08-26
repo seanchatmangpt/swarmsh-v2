@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.analytics.tier
+    type: string
+    stability: development
+    brief: Analytics tier used for 80/20 analysis.
+    examples: ['vital_few', 'useful_many']
+  - key: swarmsh.analytics.waste_type
+    type: string
+    stability: development
+    brief: Waste category identified by the analysis.
+    examples: ['overproduction', 'waiting', 'transport', 'overprocessing', 'inventory', 'motion', 'defects']
+  - key: swarmsh.analytics.flow_efficiency
+    type: double
+    stability: development
+    brief: Observed flow-efficiency percentage.
+    examples: [84.0, 92.5]
+  - key: swarmsh.analytics.optimization_type
+    type: string
+    stability: development
+    brief: Optimization method applied to the observation.
+    examples: ['pareto', 'value_stream', 'bottleneck_removal']
+  - key: swarmsh.analytics.sigma_level
+    type: double
+    stability: development
+    brief: Observed Six Sigma quality level.
+    examples: [4.2, 5.0, 6.0]
