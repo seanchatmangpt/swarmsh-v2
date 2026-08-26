@@ -18,12 +18,14 @@ bash scripts/verify-semconv-v2.sh
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
-# Weaver's --templates value is the template root. Generation parameters are
-# fixed inputs so replay cannot depend on wall-clock time.
+# Weaver's --v2 switch is a boolean flag (not a key/value option). Passing a
+# literal `true` shifts TARGET/OUTPUT and means generation never starts. Keep
+# the flag positional contract exact so this court exercises the admitted
+# registry rather than only proving schema admission.
 weaver registry generate \
   --registry semantic-conventions-v2/ \
   --templates templates \
-  --v2 true \
+  --v2 \
   -D 'semconv_version="2.0.0"' \
   -D 'generation_timestamp="1970-01-01T00:00:00Z"' \
   rust \
