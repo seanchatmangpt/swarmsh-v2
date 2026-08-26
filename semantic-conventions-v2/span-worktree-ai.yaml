@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.worktree.ai_integration'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes advisory AI analysis for worktree management without granting actuation authority.
     attributes:
       - ref: swarmsh.worktree.name
