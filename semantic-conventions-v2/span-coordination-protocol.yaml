@@ -1,0 +1,15 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.coordination.protocol
+    name:
+      note: 'swarmsh.coordination.protocol'
+    kind: internal
+    stability: development
+    brief: Observes execution of an admitted coordination protocol.
+    attributes:
+      - ref: swarmsh.coordination.pattern
+        requirement_level: required
+      - ref: swarmsh.coordination.epoch
+        requirement_level: recommended
+      - ref: swarmsh.coordination.participant_count
+        requirement_level: recommended
