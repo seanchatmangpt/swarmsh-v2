@@ -1,0 +1,43 @@
+name: Weaver v2 Semantic Convention Admission
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'semantic-conventions-v2/**'
+      - 'scripts/verify-semconv-v2.sh'
+      - 'docs/SEMCONV_V2_MIGRATION.md'
+      - '.github/workflows/semconv-v2.yml'
+  push:
+    branches:
+      - 'finish/**'
+    paths:
+      - 'semantic-conventions-v2/**'
+      - 'scripts/verify-semconv-v2.sh'
+      - 'docs/SEMCONV_V2_MIGRATION.md'
+      - '.github/workflows/semconv-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject identity
+        env:
+          SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+
+      - name: Pin OpenTelemetry Weaver 0.25.1
+        uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.25.1
+
+      - name: Validate replacement registry
+        run: bash scripts/verify-semconv-v2.sh
