@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.worktree.coordination'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes multi-worktree coordination without claiming universal conflict freedom.
     attributes:
       - ref: swarmsh.worktree.coordination_pattern
