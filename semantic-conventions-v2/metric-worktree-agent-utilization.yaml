@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.agent.utilization
+    brief: Current observed agent utilization associated with a worktree.
+    instrument: gauge
+    unit: '1'
+    stability: development
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
