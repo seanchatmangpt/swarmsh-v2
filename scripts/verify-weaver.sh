@@ -18,11 +18,14 @@ bash scripts/verify-semconv-v2.sh
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
-# Weaver's --templates value is the template root. The registry mode and rust
-# target resolve beneath templates/registry/rust.
+# Weaver's --templates value is the template root. Generation parameters are
+# fixed inputs so replay cannot depend on wall-clock time.
 weaver registry generate \
   --registry semantic-conventions-v2/ \
   --templates templates \
+  --v2 true \
+  -D 'semconv_version="2.0.0"' \
+  -D 'generation_timestamp="1970-01-01T00:00:00Z"' \
   rust \
   "$out"
 
