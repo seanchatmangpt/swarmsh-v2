@@ -56,8 +56,7 @@ jobs:
             tests/completion_acceptance.rs \
             tests/completion_concurrency.rs; do
             mkdir -p ".rustfmt-replay/$(dirname "$file")"
-            cp "$file" ".rustfmt-replay/$file"
-            rustfmt --edition 2021 ".rustfmt-replay/$file"
+            rustfmt --edition 2021 < "$file" > ".rustfmt-replay/$file"
           done
 
       - name: Preserve rustfmt replay evidence
