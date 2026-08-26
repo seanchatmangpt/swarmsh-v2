@@ -1,0 +1,19 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.worktree.ai_integration
+    name:
+      note: 'swarmsh.worktree.ai_integration'
+    kind: internal
+    stability: development
+    brief: Observes advisory AI analysis for worktree management without granting actuation authority.
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
+      - ref: swarmsh.worktree.ai.decision_type
+        requirement_level: required
+      - ref: swarmsh.worktree.ai.confidence
+        requirement_level: recommended
+      - ref: swarmsh.worktree.ai.recommendation_count
+        requirement_level: recommended
+      - ref: swarmsh.worktree.ai.optimization_target
+        requirement_level: recommended
