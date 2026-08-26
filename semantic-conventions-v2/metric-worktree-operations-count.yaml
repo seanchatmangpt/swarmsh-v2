@@ -5,6 +5,7 @@ metrics:
     instrument: counter
     unit: '{operation}'
     stability: development
+    requirement_level: recommended
     attributes:
       - ref: swarmsh.worktree.operation
         requirement_level: recommended
