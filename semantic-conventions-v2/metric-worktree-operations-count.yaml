@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.operations.count
+    brief: Counts observed worktree operations.
+    instrument: counter
+    unit: '{operation}'
+    stability: development
+    attributes:
+      - ref: swarmsh.worktree.operation
+        requirement_level: recommended
