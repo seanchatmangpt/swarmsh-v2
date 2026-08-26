@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.worktree {swarmsh.worktree.operation}'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes a Git worktree operation under SwarmSH coordination.
     attributes:
       - ref: swarmsh.worktree.name
