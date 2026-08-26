@@ -15,13 +15,13 @@ weaver --version
 # then require all committed projections to replay from that same source.
 bash scripts/verify-semconv-v2.sh
 
-out="$(mktemp -d)"
-trap 'rm -rf "$out"' EXIT
+out="$repo_root/.weaver-replay"
+rm -rf "$out"
+mkdir -p "$out"
 
-# Weaver's --v2 switch is a boolean flag (not a key/value option). Passing a
-# literal `true` shifts TARGET/OUTPUT and means generation never starts. Keep
-# the flag positional contract exact so this court exercises the admitted
-# registry rather than only proving schema admission.
+# Keep the exact generated evidence on failure. CI uploads this directory so a
+# stale tracked projection can only be replaced from the admitted Weaver run,
+# never by hand-editing generated Rust.
 weaver registry generate \
   --registry semantic-conventions-v2/ \
   --templates templates \
@@ -31,20 +31,29 @@ weaver registry generate \
   rust \
   "$out"
 
+status=0
 for projection in attributes.rs span_builders.rs metrics.rs; do
   generated="$out/$projection"
   committed="src/generated/$projection"
 
   test -f "$generated" || {
     echo "WEAVER=BUILD_BROKEN: missing generated projection $projection from v2 registry" >&2
-    exit 1
+    status=1
+    continue
   }
 
   if ! cmp -s "$generated" "$committed"; then
     echo "WEAVER=BUILD_BROKEN: v2 projection drift in $committed" >&2
     diff -u "$committed" "$generated" || true
-    exit 1
+    status=1
   fi
 done
 
+if [ "$status" -ne 0 ]; then
+  sha256sum "$out"/*.rs | sort > "$out/SHA256SUMS"
+  echo 'WEAVER_REPLAY_EVIDENCE=.weaver-replay'
+  exit "$status"
+fi
+
+sha256sum "$out"/*.rs | sort > "$out/SHA256SUMS"
 echo 'WEAVER=ALIVE[V2_REPLAY]'
