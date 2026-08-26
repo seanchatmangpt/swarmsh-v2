@@ -1,0 +1,22 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.worktree.ai.decision_type
+    type: string
+    stability: development
+    brief: Type of advisory AI worktree decision.
+    examples: ['work_assignment', 'optimization', 'coordination', 'cleanup']
+  - key: swarmsh.worktree.ai.confidence
+    type: double
+    stability: development
+    brief: Reported advisory confidence for a worktree recommendation.
+    examples: [0.85, 0.92, 0.67]
+  - key: swarmsh.worktree.ai.recommendation_count
+    type: int
+    stability: development
+    brief: Number of advisory recommendations produced for the worktree.
+    examples: [3, 7, 1]
+  - key: swarmsh.worktree.ai.optimization_target
+    type: string
+    stability: development
+    brief: Target metric named by the advisory optimization.
+    examples: ['disk_usage', 'sync_frequency', 'agent_utilization', 'coordination_latency']
