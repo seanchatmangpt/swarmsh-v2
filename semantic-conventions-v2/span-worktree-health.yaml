@@ -1,0 +1,21 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.worktree.health
+    name:
+      note: 'swarmsh.worktree.health'
+    kind: internal
+    stability: development
+    brief: Observes worktree health without promoting a health sample to global system standing.
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
+      - ref: swarmsh.worktree.health.status
+        requirement_level: required
+      - ref: swarmsh.worktree.health.bottleneck_detected
+        requirement_level: recommended
+      - ref: swarmsh.worktree.health.bottleneck_type
+        requirement_level: recommended
+      - ref: swarmsh.worktree.health.uptime_percentage
+        requirement_level: recommended
+      - ref: swarmsh.worktree.health.last_check_timestamp
+        requirement_level: required
