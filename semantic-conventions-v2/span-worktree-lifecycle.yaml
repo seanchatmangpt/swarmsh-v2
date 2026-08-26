@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.worktree.lifecycle {swarmsh.worktree.operation}'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes a bounded worktree lifecycle transition.
     attributes:
       - ref: swarmsh.worktree.name
