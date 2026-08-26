@@ -18,9 +18,11 @@ bash scripts/verify-semconv-v2.sh
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
+# Weaver's --templates value is the template root. The registry mode and rust
+# target resolve beneath templates/registry/rust.
 weaver registry generate \
   --registry semantic-conventions-v2/ \
-  --templates templates/registry \
+  --templates templates \
   rust \
   "$out"
 
