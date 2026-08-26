@@ -26,9 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Admit exact subject
+        run: |
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
 
       - name: Pin stable toolchain
         run: |
@@ -37,14 +45,41 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Completion-surface formatting
+      - name: Manufacture completion-surface rustfmt replay
         run: |
-          rustfmt --edition 2021 --check \
+          set -euo pipefail
+          mkdir -p .rustfmt-replay/src .rustfmt-replay/tests
+          for file in \
             src/lib.rs \
             src/coordination.rs \
             src/ai_integration.rs \
             tests/completion_acceptance.rs \
-            tests/completion_concurrency.rs
+            tests/completion_concurrency.rs; do
+            mkdir -p ".rustfmt-replay/$(dirname "$file")"
+            cp "$file" ".rustfmt-replay/$file"
+            rustfmt --edition 2021 ".rustfmt-replay/$file"
+          done
+
+      - name: Preserve rustfmt replay evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarmsh-v2-rustfmt-replay-${{ github.event.pull_request.head.sha || github.sha }}
+          path: .rustfmt-replay/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Require completion surface equals rustfmt replay
+        run: |
+          set -euo pipefail
+          for file in \
+            src/lib.rs \
+            src/coordination.rs \
+            src/ai_integration.rs \
+            tests/completion_acceptance.rs \
+            tests/completion_concurrency.rs; do
+            diff -u "$file" ".rustfmt-replay/$file"
+          done
 
       - name: Compile every target and feature
         run: cargo check --locked --all-targets --all-features
@@ -74,9 +109,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Admit exact subject
+        run: |
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
 
       - name: Pin OpenTelemetry Weaver 0.25.1
         uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.25.1
@@ -100,8 +143,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Pin stable toolchain
@@ -117,8 +162,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Verify completion path is fail-closed
@@ -130,8 +177,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Pin stable toolchain
@@ -157,8 +206,10 @@ jobs:
     needs: [rust, weaver, shell-export, claims, smoke]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Emit machine-readable receipt
