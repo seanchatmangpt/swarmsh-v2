@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.ai.decisions
+    brief: Counts advisory AI decisions observed for worktree operations.
+    instrument: counter
+    unit: '{decision}'
+    stability: development
+    attributes:
+      - ref: swarmsh.worktree.ai.decision_type
+        requirement_level: required
