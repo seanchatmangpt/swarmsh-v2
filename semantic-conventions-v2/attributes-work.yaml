@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.work.id
+    type: string
+    stability: development
+    brief: Unique work-item identifier.
+    examples: ['work_9876543210']
+  - key: swarmsh.work.status
+    type: string
+    stability: development
+    brief: Current work-item status.
+    examples: ['pending', 'assigned', 'in_progress', 'completed', 'failed']
+  - key: swarmsh.work.priority
+    type: double
+    stability: development
+    brief: Work-item priority used by deterministic selection.
+    examples: [0.9, 0.5, 0.1]
+  - key: swarmsh.work.assigned_agent
+    type: string
+    stability: development
+    brief: Identifier of the agent assigned to the work item.
+    examples: ['agent_1234567890']
+  - key: swarmsh.work.estimated_duration_ms
+    type: int
+    stability: development
+    brief: Estimated work duration in milliseconds.
+    examples: [5000, 30000]
