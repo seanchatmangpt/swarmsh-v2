@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.agent.lifecycle'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes bounded agent lifecycle operations.
     attributes:
       - ref: swarmsh.agent.id
