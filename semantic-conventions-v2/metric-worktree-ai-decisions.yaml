@@ -5,6 +5,7 @@ metrics:
     instrument: counter
     unit: '{decision}'
     stability: development
+    requirement_level: recommended
     attributes:
       - ref: swarmsh.worktree.ai.decision_type
         requirement_level: required
