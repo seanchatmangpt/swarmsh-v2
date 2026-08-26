@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.work.completed.total
+    brief: Counts observed completed work items.
+    instrument: counter
+    unit: '{item}'
+    stability: development
+    attributes:
+      - ref: swarmsh.work.priority
+        requirement_level: recommended
