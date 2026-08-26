@@ -1,0 +1,12 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.coordination.duration
+    brief: Distribution of observed coordination-operation duration.
+    instrument: histogram
+    unit: ms
+    stability: development
+    attributes:
+      - ref: swarmsh.coordination.pattern
+        requirement_level: recommended
+      - ref: swarmsh.coordination.conflict_resolution
+        requirement_level: recommended
