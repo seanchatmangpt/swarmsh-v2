@@ -5,6 +5,7 @@ metrics:
     instrument: counter
     unit: '{registration}'
     stability: development
+    requirement_level: recommended
     attributes:
       - ref: swarmsh.agent.role
         requirement_level: recommended
