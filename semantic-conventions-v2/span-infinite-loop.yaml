@@ -1,0 +1,19 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.infinite_loop
+    name:
+      note: 'swarmsh.infinite_loop'
+    kind: internal
+    stability: development
+    brief: Observes one admitted infinite-loop execution boundary.
+    attributes:
+      - ref: swarmsh.infinite_loop.loop_id
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.specification_path
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.output_directory
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.iteration_count
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.loop_mode
+        requirement_level: required
