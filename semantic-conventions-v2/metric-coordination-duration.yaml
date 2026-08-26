@@ -5,6 +5,7 @@ metrics:
     instrument: histogram
     unit: ms
     stability: development
+    requirement_level: recommended
     attributes:
       - ref: swarmsh.coordination.pattern
         requirement_level: recommended
