@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.coordination.protocol'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes execution of an admitted coordination protocol.
     attributes:
       - ref: swarmsh.coordination.pattern
