@@ -1,0 +1,15 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.agent.lifecycle
+    name:
+      note: 'swarmsh.agent.lifecycle'
+    kind: internal
+    stability: development
+    brief: Observes bounded agent lifecycle operations.
+    attributes:
+      - ref: swarmsh.agent.id
+        requirement_level: required
+      - ref: swarmsh.agent.role
+        requirement_level: recommended
+      - ref: swarmsh.agent.status
+        requirement_level: recommended
