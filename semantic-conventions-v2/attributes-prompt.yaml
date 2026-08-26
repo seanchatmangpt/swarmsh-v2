@@ -1,0 +1,32 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.prompt.pattern
+    type: string
+    stability: development
+    brief: Coordination pattern associated with an advisory prompt.
+    examples: ['scrum_at_scale', 'roberts_rules', 'realtime', 'atomic']
+  - key: swarmsh.prompt.operation
+    type: string
+    stability: development
+    brief: Operation within the coordination pattern.
+    examples: ['sprint_planning', 'daily_standup', 'sprint_review', 'retrospective']
+  - key: swarmsh.prompt.ai_provider
+    type: string
+    stability: development
+    brief: Explicitly configured provider used for prompt processing.
+    examples: ['ollama', 'claude', 'openai', 'local_model']
+  - key: swarmsh.prompt.model_name
+    type: string
+    stability: development
+    brief: Model identifier used for prompt processing.
+    examples: ['llama2:latest', 'claude-3-sonnet', 'gpt-4', 'local-llm']
+  - key: swarmsh.prompt.coordination_decision
+    type: string
+    stability: development
+    brief: Advisory coordination decision produced from the prompt.
+    examples: ['approve_sprint_plan', 'escalate_impediment', 'approve_motion', 'table_discussion']
+  - key: swarmsh.prompt.implementation_priority
+    type: string
+    stability: development
+    brief: Priority attached to the advisory decision.
+    examples: ['immediate', 'high', 'medium', 'low', 'deferred']
