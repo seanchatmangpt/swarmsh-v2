@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.operations.duration
+    brief: Distribution of observed worktree-operation duration.
+    instrument: histogram
+    unit: ms
+    stability: development
+    attributes:
+      - ref: swarmsh.worktree.operation
+        requirement_level: recommended
