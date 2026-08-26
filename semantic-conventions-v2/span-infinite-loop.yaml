@@ -5,6 +5,7 @@ spans:
       note: 'swarmsh.infinite_loop'
     kind: internal
     stability: development
+    requirement_level: recommended
     brief: Observes one admitted infinite-loop execution boundary.
     attributes:
       - ref: swarmsh.infinite_loop.loop_id
