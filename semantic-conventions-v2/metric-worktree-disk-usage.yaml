@@ -1,0 +1,10 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.disk_usage
+    brief: Current observed disk usage for a worktree.
+    instrument: gauge
+    unit: MiBy
+    stability: development
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
