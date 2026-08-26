@@ -11,23 +11,25 @@ command -v weaver >/dev/null 2>&1 || {
 
 weaver --version
 
+# The replacement registry is now part of the completion subject. Admit it
+# before attempting any legacy projection replay so schema migration failures
+# cannot be hidden behind generated-code drift.
+bash scripts/verify-semconv-v2.sh
+
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
-# Validate the admitted local semantic-convention registry with the same
-# upstream Weaver implementation used for generation.
+# Legacy replay remains required until the committed generated projections are
+# demonstrably reproduced from the replacement registry. Keeping this gate
+# preserves provenance while the migration is completed.
 weaver registry check --registry semantic-conventions/
 
-# Generate into an isolated directory. The target-specific configuration under
-# templates/registry/rust/weaver.yaml is part of the admitted generator graph.
 weaver registry generate \
   --registry semantic-conventions/ \
   --templates templates/registry \
   rust \
   "$out"
 
-# Only projections with an explicit canonical Weaver template are compared.
-# Any divergence means the committed projection has no current replay receipt.
 for projection in attributes.rs span_builders.rs metrics.rs; do
   generated="$out/$projection"
   committed="src/generated/$projection"
