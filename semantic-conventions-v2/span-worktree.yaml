@@ -1,0 +1,21 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.worktree
+    name:
+      note: 'swarmsh.worktree {swarmsh.worktree.operation}'
+    kind: internal
+    stability: development
+    brief: Observes a Git worktree operation under SwarmSH coordination.
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
+      - ref: swarmsh.worktree.path
+        requirement_level: required
+      - ref: swarmsh.worktree.branch
+        requirement_level: required
+      - ref: swarmsh.worktree.status
+        requirement_level: required
+      - ref: swarmsh.worktree.operation
+        requirement_level: required
+      - ref: swarmsh.worktree.coordination_epoch
+        requirement_level: required
