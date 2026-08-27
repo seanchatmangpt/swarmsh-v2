@@ -72,7 +72,11 @@ async fn concurrent_claims_are_unique_and_exhaustive() {
     }
 
     let unique: HashSet<_> = all_claims.iter().cloned().collect();
-    assert_eq!(all_claims.len(), WORK_ITEMS, "every work item is claimed once");
+    assert_eq!(
+        all_claims.len(),
+        WORK_ITEMS,
+        "every work item is claimed once"
+    );
     assert_eq!(unique.len(), WORK_ITEMS, "no work item is claimed twice");
 }
 
