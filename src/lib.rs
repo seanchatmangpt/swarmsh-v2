@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 use crate::generated::metrics::SwarmMetrics;
 
-pub mod analytics;
 pub mod ai_integration;
+pub mod analytics;
 pub mod auto_command;
 pub mod coordination;
 pub mod health;
@@ -83,8 +83,11 @@ impl SwarmSystem {
         let analytics = Arc::new(AnalyticsEngine::new(telemetry.clone()).await?);
         let shell_exporter = Arc::new(ShellExporter::new().await?);
         let worktree_manager = Arc::new(
-            WorktreeManager::new(std::env::current_dir()?.join("worktrees"), telemetry.clone())
-                .await?,
+            WorktreeManager::new(
+                std::env::current_dir()?.join("worktrees"),
+                telemetry.clone(),
+            )
+            .await?,
         );
         let ai_integration = Arc::new(AIIntegration::new().await?);
 
