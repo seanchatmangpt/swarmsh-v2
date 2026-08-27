@@ -37,15 +37,9 @@ impl CoordinationPattern {
             Self::ScrumAtScale => {
                 "Scrum at Scale coordination with sprint-based cycles and team synchronization"
             }
-            Self::RobertsRules => {
-                "Roberts Rules governance for formal decision making and voting"
-            }
-            Self::Realtime => {
-                "Real-time coordination with bounded in-process state snapshots"
-            }
-            Self::Atomic => {
-                "Atomic in-process coordination using Tokio synchronization primitives"
-            }
+            Self::RobertsRules => "Roberts Rules governance for formal decision making and voting",
+            Self::Realtime => "Real-time coordination with bounded in-process state snapshots",
+            Self::Atomic => "Atomic in-process coordination using Tokio synchronization primitives",
         }
     }
 }
@@ -185,8 +179,7 @@ impl WorkQueue {
     #[instrument(skip(self), fields(agent_id = %agent.id, agent_role = %agent.role))]
     pub async fn get_work_for_agent(&self, agent: &AgentSpec) -> Result<Option<WorkItem>> {
         let correlation_id = CorrelationId::new();
-        let _perf_timer =
-            PerfTimer::with_correlation("work_assignment", correlation_id.clone());
+        let _perf_timer = PerfTimer::with_correlation("work_assignment", correlation_id.clone());
         let _span = self
             .telemetry
             .span_with_correlation("get_work_for_agent", &correlation_id)
@@ -210,8 +203,10 @@ impl WorkQueue {
                             ai_start.elapsed(),
                         );
 
-                        if let Some(work_id) =
-                            decision.parameters.get("work_id").and_then(|value| value.as_str())
+                        if let Some(work_id) = decision
+                            .parameters
+                            .get("work_id")
+                            .and_then(|value| value.as_str())
                         {
                             let mut items = self.items.write().await;
                             if let Some(position) = items.iter().position(|work| {
@@ -323,7 +318,10 @@ impl AgentCoordinator {
     }
 
     pub async fn start(&self) -> Result<()> {
-        info!(ai_enabled = self.ai_integration.is_some(), "agent coordinator started");
+        info!(
+            ai_enabled = self.ai_integration.is_some(),
+            "agent coordinator started"
+        );
 
         if let Some(ref ai) = self.ai_integration {
             match ai.analyze("System startup initialization").await {
@@ -354,8 +352,7 @@ impl AgentCoordinator {
         validate_agent_spec(&spec)?;
 
         let correlation_id = CorrelationId::new();
-        let _perf_timer =
-            PerfTimer::with_correlation("agent_registration", correlation_id.clone());
+        let _perf_timer = PerfTimer::with_correlation("agent_registration", correlation_id.clone());
         let _span = self
             .swarm_telemetry
             .span_with_correlation("register_agent", &correlation_id)
@@ -485,10 +482,8 @@ impl AgentCoordinator {
             self.coordinate_by_pattern(&pattern).await?;
         }
 
-        self.swarm_telemetry.record_coordination_duration(
-            &format!("{pattern:?}"),
-            lock_time + read_time,
-        );
+        self.swarm_telemetry
+            .record_coordination_duration(&format!("{pattern:?}"), lock_time + read_time);
 
         info!(
             pattern = ?pattern,
@@ -532,10 +527,8 @@ impl AgentCoordinator {
 
     async fn coordinate_scrum_at_scale(&self) -> Result<()> {
         let correlation_id = CorrelationId::new();
-        let _perf_timer = PerfTimer::with_correlation(
-            "scrum_at_scale_coordination",
-            correlation_id.clone(),
-        );
+        let _perf_timer =
+            PerfTimer::with_correlation("scrum_at_scale_coordination", correlation_id.clone());
 
         info!(correlation_id = %correlation_id, "executing Scrum at Scale coordination");
 
@@ -608,8 +601,7 @@ impl AgentCoordinator {
     }
 
     async fn coordinate_atomic(&self) -> Result<()> {
-        let coordination_epoch =
-            SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        let coordination_epoch = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
         info!(
             coordination_epoch,
             "executing bounded in-process atomic coordination"
@@ -676,7 +668,12 @@ impl AgentCoordinator {
 
 fn ai_enabled_from_env() -> bool {
     std::env::var("SWARMSH_ENABLE_AI")
-        .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
+        .map(|value| {
+            matches!(
+                value.to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
         .unwrap_or(false)
 }
 
