@@ -1,0 +1,67 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.worktree.name
+    type: string
+    stability: development
+    brief: Name of the Git worktree.
+    examples: ['feature-branch', 'hotfix-123', 'experiment-ai']
+  - key: swarmsh.worktree.path
+    type: string
+    stability: development
+    brief: Filesystem path to the worktree.
+    examples: ['/workspace/feature-branch', '../hotfix-123']
+  - key: swarmsh.worktree.branch
+    type: string
+    stability: development
+    brief: Git branch associated with the worktree.
+    examples: ['feature/new-ui', 'hotfix/security-patch', 'main']
+  - key: swarmsh.worktree.status
+    type: string
+    stability: development
+    brief: Current operational status of the worktree.
+    examples: ['active', 'idle', 'coordinating', 'syncing', 'failed']
+  - key: swarmsh.worktree.coordination_pattern
+    type: string
+    stability: development
+    brief: Coordination pattern applied to the worktree.
+    examples: ['scrum_at_scale', 'roberts_rules', 'realtime', 'atomic']
+  - key: swarmsh.worktree.operation
+    type: string
+    stability: development
+    brief: Worktree operation being observed.
+    examples: ['create', 'remove', 'sync', 'backup', 'restore', 'coordinate']
+  - key: swarmsh.worktree.agent_count
+    type: int
+    stability: development
+    brief: Number of agents assigned to the worktree.
+    examples: [1, 3, 5]
+  - key: swarmsh.worktree.coordination_epoch
+    type: int
+    stability: development
+    brief: Nanosecond timestamp used for coordination ordering.
+    examples: [1640995200000000000, 1640995201000000000]
+  - key: swarmsh.worktree.disk_usage_mb
+    type: int
+    stability: development
+    brief: Observed disk usage in megabytes.
+    examples: [150, 2048, 512]
+  - key: swarmsh.worktree.commits_count
+    type: int
+    stability: development
+    brief: Observed commit count in the worktree.
+    examples: [42, 156, 1024]
+  - key: swarmsh.worktree.sync_frequency_hours
+    type: double
+    stability: development
+    brief: Observed average synchronization frequency in hours.
+    examples: [2.5, 24.0, 0.5]
+  - key: swarmsh.worktree.auto_sync
+    type: boolean
+    stability: development
+    brief: Whether automatic synchronization is configured.
+    examples: [true, false]
+  - key: swarmsh.worktree.backup_enabled
+    type: boolean
+    stability: development
+    brief: Whether backup is configured for the worktree.
+    examples: [true, false]

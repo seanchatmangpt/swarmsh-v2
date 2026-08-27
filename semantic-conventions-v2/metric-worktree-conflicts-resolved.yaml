@@ -1,0 +1,11 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.conflicts.resolved
+    brief: Counts observed coordination conflicts that reached a resolved state.
+    instrument: counter
+    unit: '{conflict}'
+    stability: development
+    requirement_level: recommended
+    attributes:
+      - ref: swarmsh.worktree.coordination_pattern
+        requirement_level: recommended

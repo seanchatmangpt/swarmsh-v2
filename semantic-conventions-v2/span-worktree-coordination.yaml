@@ -1,0 +1,22 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.worktree.coordination
+    name:
+      note: 'swarmsh.worktree.coordination'
+    kind: internal
+    stability: development
+    requirement_level: recommended
+    brief: Observes multi-worktree coordination without claiming universal conflict freedom.
+    attributes:
+      - ref: swarmsh.worktree.coordination_pattern
+        requirement_level: recommended
+      - ref: swarmsh.worktree.coordination_epoch
+        requirement_level: required
+      - ref: swarmsh.worktree.coordination.participant_count
+        requirement_level: recommended
+      - ref: swarmsh.worktree.coordination.consensus_required
+        requirement_level: recommended
+      - ref: swarmsh.worktree.coordination.voting_threshold
+        requirement_level: recommended
+      - ref: swarmsh.worktree.coordination.latency_ms
+        requirement_level: recommended

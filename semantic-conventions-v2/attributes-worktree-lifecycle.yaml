@@ -1,0 +1,17 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.worktree.lifecycle.phase
+    type: string
+    stability: development
+    brief: Current phase of a worktree lifecycle operation.
+    examples: ['initializing', 'validating', 'executing', 'completing', 'error']
+  - key: swarmsh.worktree.lifecycle.duration_ms
+    type: int
+    stability: development
+    brief: Observed duration of a worktree lifecycle operation in milliseconds.
+    examples: [150, 2500, 45000]
+  - key: swarmsh.worktree.lifecycle.success
+    type: boolean
+    stability: development
+    brief: Whether the observed lifecycle operation completed successfully.
+    examples: [true, false]

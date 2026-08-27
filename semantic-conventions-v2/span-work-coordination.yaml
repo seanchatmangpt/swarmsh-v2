@@ -1,0 +1,16 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.work.coordination
+    name:
+      note: 'swarmsh.work.coordination'
+    kind: internal
+    stability: development
+    requirement_level: recommended
+    brief: Observes work coordination without implying successful actuation.
+    attributes:
+      - ref: swarmsh.work.id
+        requirement_level: required
+      - ref: swarmsh.work.status
+        requirement_level: recommended
+      - ref: swarmsh.work.assigned_agent
+        requirement_level: recommended

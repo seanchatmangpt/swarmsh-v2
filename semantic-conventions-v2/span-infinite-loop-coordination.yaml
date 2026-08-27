@@ -1,0 +1,14 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.infinite_loop.coordination
+    name:
+      note: 'swarmsh.infinite_loop.coordination'
+    kind: internal
+    stability: development
+    requirement_level: recommended
+    brief: Observes the coordination strategy and conflict-resolution mechanism used by a loop.
+    attributes:
+      - ref: swarmsh.infinite_loop.coordination.coordination_strategy
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.coordination.conflict_resolution
+        requirement_level: required

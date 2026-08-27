@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.agent.id
+    type: string
+    stability: development
+    brief: Unique agent identifier with nanosecond-precision source identity.
+    examples: ['agent_1234567890123456789']
+  - key: swarmsh.agent.role
+    type: string
+    stability: development
+    brief: Role of the agent in the swarm.
+    examples: ['coordinator', 'worker', 'observer', 'analyzer']
+  - key: swarmsh.agent.status
+    type: string
+    stability: development
+    brief: Current status of the agent.
+    examples: ['active', 'idle', 'working', 'blocked', 'failed']
+  - key: swarmsh.agent.capacity
+    type: double
+    stability: development
+    brief: Admitted work capacity of the agent.
+    examples: [0.8, 1.0]
+  - key: swarmsh.agent.specializations
+    type: string[]
+    stability: development
+    brief: Agent specializations used for compatible work selection.
+    examples: [['rust', 'telemetry'], ['shell', 'coordination']]

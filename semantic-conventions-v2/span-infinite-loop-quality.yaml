@@ -1,0 +1,14 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.infinite_loop.quality
+    name:
+      note: 'swarmsh.infinite_loop.quality'
+    kind: internal
+    stability: development
+    requirement_level: recommended
+    brief: Observes validation of an infinite-loop iteration without promoting the score to completion standing.
+    attributes:
+      - ref: swarmsh.infinite_loop.quality.quality_score
+        requirement_level: required
+      - ref: swarmsh.infinite_loop.quality.validation_method
+        requirement_level: required

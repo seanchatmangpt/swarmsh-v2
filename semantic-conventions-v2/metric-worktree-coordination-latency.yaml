@@ -1,0 +1,11 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.coordination.latency
+    brief: Distribution of observed worktree coordination latency.
+    instrument: histogram
+    unit: ms
+    stability: development
+    requirement_level: recommended
+    attributes:
+      - ref: swarmsh.worktree.coordination_pattern
+        requirement_level: recommended

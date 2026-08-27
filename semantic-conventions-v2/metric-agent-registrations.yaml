@@ -1,0 +1,11 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.agent.registrations.total
+    brief: Counts observed agent registrations.
+    instrument: counter
+    unit: '{registration}'
+    stability: development
+    requirement_level: recommended
+    attributes:
+      - ref: swarmsh.agent.role
+        requirement_level: recommended

@@ -1,0 +1,11 @@
+file_format: definition/2
+metrics:
+  - name: swarmsh.worktree.sync.frequency
+    brief: Current observed worktree synchronization frequency.
+    instrument: gauge
+    unit: h
+    stability: development
+    requirement_level: recommended
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required

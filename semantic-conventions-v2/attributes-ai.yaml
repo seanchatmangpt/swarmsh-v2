@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.ai.provider
+    type: string
+    stability: development
+    brief: Explicitly configured advisory AI provider.
+    examples: ['claude', 'ollama', 'both']
+  - key: swarmsh.ai.model
+    type: string
+    stability: development
+    brief: Advisory AI model identifier.
+    examples: ['claude-3-opus', 'llama3', 'mixtral']
+  - key: swarmsh.ai.decision_type
+    type: string
+    stability: development
+    brief: Type of advisory AI decision or analysis.
+    examples: ['work_assignment', 'pattern_analysis', 'optimization']
+  - key: swarmsh.ai.confidence
+    type: double
+    stability: development
+    brief: Reported advisory confidence in the range zero to one.
+    examples: [0.95, 0.8, 0.6]
+  - key: swarmsh.ai.streaming
+    type: boolean
+    stability: development
+    brief: Whether the advisory provider used streaming mode.
+    examples: [true, false]

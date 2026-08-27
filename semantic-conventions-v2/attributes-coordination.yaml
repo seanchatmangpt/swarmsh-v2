@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.coordination.pattern
+    type: string
+    stability: development
+    brief: Active coordination pattern.
+    examples: ['scrum_at_scale', 'roberts_rules', 'realtime', 'atomic']
+  - key: swarmsh.coordination.epoch
+    type: int
+    stability: development
+    brief: Coordination epoch used for conflict-resolution ordering.
+    examples: [1234567890]
+  - key: swarmsh.coordination.participant_count
+    type: int
+    stability: development
+    brief: Number of participants in a coordination operation.
+    examples: [5, 10, 25]
+  - key: swarmsh.coordination.latency_ms
+    type: double
+    stability: development
+    brief: Observed coordination latency in milliseconds.
+    examples: [1.5, 0.8]
+  - key: swarmsh.coordination.conflict_resolution
+    type: string
+    stability: development
+    brief: Conflict-resolution method selected for the coordination operation.
+    examples: ['mathematical', 'consensus', 'leader_election']

@@ -1,0 +1,22 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.health.component
+    type: string
+    stability: development
+    brief: Component being monitored.
+    examples: ['coordination', 'telemetry', 'ai_integration', 'storage']
+  - key: swarmsh.health.status
+    type: string
+    stability: development
+    brief: Observed health status of the component.
+    examples: ['healthy', 'degraded', 'unhealthy', 'critical']
+  - key: swarmsh.health.bottleneck_detected
+    type: boolean
+    stability: development
+    brief: Whether the observation identified a bottleneck.
+    examples: [true, false]
+  - key: swarmsh.health.tier
+    type: string
+    stability: development
+    brief: Monitoring tier used for the observation.
+    examples: ['tier1', 'tier2']

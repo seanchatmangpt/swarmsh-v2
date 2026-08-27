@@ -1,0 +1,27 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.worktree.health.status
+    type: string
+    stability: development
+    brief: Overall observed health status of the worktree.
+    examples: ['healthy', 'degraded', 'critical', 'failed']
+  - key: swarmsh.worktree.health.bottleneck_detected
+    type: boolean
+    stability: development
+    brief: Whether a performance bottleneck was observed.
+    examples: [true, false]
+  - key: swarmsh.worktree.health.bottleneck_type
+    type: string
+    stability: development
+    brief: Type of observed worktree bottleneck.
+    examples: ['disk_io', 'network', 'coordination', 'cpu']
+  - key: swarmsh.worktree.health.uptime_percentage
+    type: double
+    stability: development
+    brief: Observed worktree uptime percentage.
+    examples: [99.9, 95.5, 87.2]
+  - key: swarmsh.worktree.health.last_check_timestamp
+    type: int
+    stability: development
+    brief: Nanosecond timestamp of the last health observation.
+    examples: [1640995200000000000]

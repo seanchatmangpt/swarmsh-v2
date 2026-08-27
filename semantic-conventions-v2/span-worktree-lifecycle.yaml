@@ -1,0 +1,22 @@
+file_format: definition/2
+spans:
+  - type: swarmsh.worktree.lifecycle
+    name:
+      note: 'swarmsh.worktree.lifecycle {swarmsh.worktree.operation}'
+    kind: internal
+    stability: development
+    requirement_level: recommended
+    brief: Observes a bounded worktree lifecycle transition.
+    attributes:
+      - ref: swarmsh.worktree.name
+        requirement_level: required
+      - ref: swarmsh.worktree.operation
+        requirement_level: required
+      - ref: swarmsh.worktree.coordination_epoch
+        requirement_level: required
+      - ref: swarmsh.worktree.lifecycle.phase
+        requirement_level: required
+      - ref: swarmsh.worktree.lifecycle.duration_ms
+        requirement_level: recommended
+      - ref: swarmsh.worktree.lifecycle.success
+        requirement_level: recommended

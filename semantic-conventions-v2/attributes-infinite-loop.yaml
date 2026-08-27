@@ -1,0 +1,47 @@
+file_format: definition/2
+attributes:
+  - key: swarmsh.infinite_loop.loop_id
+    type: string
+    stability: development
+    brief: Unique identifier for an infinite-loop instance.
+    examples: ['loop_001', 'ui_generation_v3', 'spec_evolution_1']
+  - key: swarmsh.infinite_loop.specification_path
+    type: string
+    stability: development
+    brief: Path to the specification driving the loop.
+    examples: ['specs/invent_new_ui_v3.md', 'specs/agent_design.yaml']
+  - key: swarmsh.infinite_loop.output_directory
+    type: string
+    stability: development
+    brief: Target directory for generated loop output.
+    examples: ['src', 'infinite_src_new', 'generated_agents']
+  - key: swarmsh.infinite_loop.iteration_count
+    type: int
+    stability: development
+    brief: Current observed loop iteration number.
+    examples: [1, 5, 20]
+  - key: swarmsh.infinite_loop.loop_mode
+    type: string
+    stability: development
+    brief: Execution mode of the loop.
+    examples: ['single', 'batch', 'infinite', 'wave']
+  - key: swarmsh.infinite_loop.quality.quality_score
+    type: double
+    stability: development
+    brief: Observed normalized quality score for an iteration output.
+    examples: [0.7, 0.85, 0.92]
+  - key: swarmsh.infinite_loop.quality.validation_method
+    type: string
+    stability: development
+    brief: Method used to validate an iteration output.
+    examples: ['static_analysis', 'test_execution', 'peer_review', 'ai_evaluation']
+  - key: swarmsh.infinite_loop.coordination.coordination_strategy
+    type: string
+    stability: development
+    brief: Strategy used to coordinate loop execution.
+    examples: ['file_based', 'memory_shared', 'message_passing']
+  - key: swarmsh.infinite_loop.coordination.conflict_resolution
+    type: string
+    stability: development
+    brief: Conflict-resolution mechanism used by loop coordination.
+    examples: ['advisory_locking', 'timestamp_ordering', 'priority_based']
