@@ -228,8 +228,16 @@ impl OllamaClient {
             .zip(embedding2.iter())
             .map(|(left, right)| left * right)
             .sum();
-        let magnitude1 = embedding1.iter().map(|value| value * value).sum::<f32>().sqrt();
-        let magnitude2 = embedding2.iter().map(|value| value * value).sum::<f32>().sqrt();
+        let magnitude1 = embedding1
+            .iter()
+            .map(|value| value * value)
+            .sum::<f32>()
+            .sqrt();
+        let magnitude2 = embedding2
+            .iter()
+            .map(|value| value * value)
+            .sum::<f32>()
+            .sqrt();
 
         if magnitude1 == 0.0 || magnitude2 == 0.0 {
             return 0.0;
@@ -276,10 +284,7 @@ impl OllamaClient {
     }
 
     #[instrument(skip(self, health_data))]
-    pub async fn analyze_bottlenecks(
-        &self,
-        health_data: &serde_json::Value,
-    ) -> Result<AIAnalysis> {
+    pub async fn analyze_bottlenecks(&self, health_data: &serde_json::Value) -> Result<AIAnalysis> {
         self.analyze_coordination(
             "health_bottleneck_analysis",
             Some(&serde_json::to_string(health_data)?),
@@ -325,7 +330,10 @@ pub struct AIIntegration {
 impl AIIntegration {
     #[instrument(skip_all)]
     pub async fn new() -> Result<Self> {
-        let claude = ClaudeClient::new().await.ok().filter(ClaudeClient::configured);
+        let claude = ClaudeClient::new()
+            .await
+            .ok()
+            .filter(ClaudeClient::configured);
         let ollama = if env_flag("SWARMSH_ENABLE_OLLAMA") {
             Some(OllamaClient::new().await?)
         } else {
@@ -399,10 +407,15 @@ impl AIIntegration {
     #[instrument(skip(self, script))]
     pub async fn optimize_shell_script(&self, script: &str, requirements: &str) -> Result<String> {
         if let Some(ref ollama) = self.ollama {
-            return ollama.generate_shell_optimization(script, requirements).await;
+            return ollama
+                .generate_shell_optimization(script, requirements)
+                .await;
         }
 
-        debug!(requirements, "AI shell optimization skipped because no provider is enabled");
+        debug!(
+            requirements,
+            "AI shell optimization skipped because no provider is enabled"
+        );
         Ok(script.to_string())
     }
 
