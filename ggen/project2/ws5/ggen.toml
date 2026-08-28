@@ -1,0 +1,8 @@
+[project]
+name = "ws5-swarmsh-v2"
+
+[ontology]
+source = "ontology.ttl"
+
+[templates]
+dir = "vendor/ggen-marketplace/packs/forced-top25-admissibility-factory-pack/templates"
